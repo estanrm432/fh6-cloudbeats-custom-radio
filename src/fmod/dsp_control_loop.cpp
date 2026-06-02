@@ -13,8 +13,6 @@ namespace {
 using namespace std::chrono_literals;
 constexpr auto kTick           = 20ms;
 constexpr auto kDiscoveryRetry = 5s;
-constexpr int kDiscoveryTries  = 120; // 10-minute budget; the radio system
-                                      // isn't wired up until well into launch.
 
 // Ticks of no read_callback progress (while the source is producing PCM)
 // before we conclude the game tore the radio channel down. 1s @ 20ms.
@@ -51,8 +49,15 @@ ControlLoop::~ControlLoop() {
 void ControlLoop::run(const std::stop_token& tok) {
     log::info("[ctrl] control loop started");
 
+    // Keep trying to discover the radio system for as long as the game runs.
+    // There is deliberately no fixed budget: a player may sit in menus or stay
+    // AFK for a long time before ever tuning to our station. If we gave up, the
+    // control loop would exit permanently and no audio would ever play until
+    // the game (and version.dll) restarts -- restarting the desktop app does
+    // not help, since the loop lives in the injected DLL. Discovery is cheap (a
+    // heap scan every few seconds) and stops the instant the target is found.
     bool acquired = false;
-    for (int attempt = 0; attempt < kDiscoveryTries && !tok.stop_requested(); ++attempt) {
+    while (!tok.stop_requested()) {
         if (acquire_target()) {
             acquired = true;
             break;
@@ -61,10 +66,7 @@ void ControlLoop::run(const std::stop_token& tok) {
              std::chrono::steady_clock::now() < t && !tok.stop_requested();)
             std::this_thread::sleep_for(kTick);
     }
-    if (!acquired) {
-        log::warn("[ctrl] discovery timed out; control loop exiting");
-        return;
-    }
+    if (!acquired) return;   // reached only when stop was requested (shutdown)
 
     // The radio HUD reads from the SampleProperties slots at a much lower
     // rate than the audio mixer. 4 Hz is more than enough and keeps the
