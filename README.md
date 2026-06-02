@@ -44,7 +44,8 @@ Horizon CloudBeats is an open-source radio mod for **Forza Horizon 6** that turn
 Horizon CloudBeats is a fork of [FH6 Universal Radio](https://github.com/g0ldyy/fh6-universal-radio), rebuilt to be faster and more reliable. Main changes in this version:
 
 - **Spotify support added** — a new source: play public Spotify playlists, albums, and tracks with no Premium and no login.
-- **Standalone desktop app** — a native companion app (`HorizonCloudBeats.exe`, included in `dist/`) that opens the dashboard in its own window and connects automatically when the game launches, so you don't need a browser.
+- **New Website UI** — new UI for the web and webapp dashboard.
+- **Standalone desktop app** — a native companion app (`HorizonCloudBeats.exe`, included in `dist/`) that opens the dashboard in its own window and connects automatically when the game launches, so you don't need a browser (autodownloader for yt-dlp, ffmpeg and deno).
 - **Optimized codebase** — cleaner, more efficient code for smoother playback and lower overhead.
 - **Equalizer fixed** — the 5-band EQ was broken in the original build; it now works correctly and applies in real time.
 - **In-game radio name fixed** — the station used to show the song title instead of the station name, with a popup on every track change. That's fixed, and since some people liked the now-playing popup, it's now an optional toggle in Settings (off by default).
