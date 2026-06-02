@@ -1269,6 +1269,17 @@ function autoSaveField(el) {
   else if (el.type === "number" || el.type === "range") value = parseFloat(el.value);
   else value = el.value;
 
+  // Sources are mutually exclusive: enabling one turns the others off (having
+  // more than one source enabled corrupts playback). Mirrors the quick-source
+  // tiles. Disabling is left as-is (you can end up with no source enabled).
+  const SOURCE_SECTIONS = ["spotify", "youtube_music", "jellyfin", "local_files"];
+  if (key === "enabled" && value === true && SOURCE_SECTIONS.includes(sec)) {
+    const patch = { general: { default_source: sec } };
+    for (const s of SOURCE_SECTIONS) patch[s] = { enabled: s === sec };
+    syncSave(patch, { silent: true });
+    return;
+  }
+
   const patch = { [sec]: { [key]: value } };
   syncSave(patch, { silent: true });
 }
