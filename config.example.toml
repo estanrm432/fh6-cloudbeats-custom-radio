@@ -1,0 +1,54 @@
+# Example config, copied to `<game>/fh6-radio/config.toml` on first install.
+# Everything is editable from the dashboard; you only need to touch this file
+# if you prefer hand edits. Windows paths should use TOML literal strings
+# (single quotes) so backslashes pass through verbatim:
+#
+#   music_dir = 'C:\Users\you\Music'
+
+[general]
+port              = 8420
+ring_buffer_mb    = 4
+default_source    = "local_files"     # local_files | youtube_music | jellyfin
+fallback_source   = "local_files"
+ffmpeg_path       = ''                # blank = `ffmpeg` on PATH; shared by all sources
+
+[local_files]
+enabled            = true
+music_dir          = ''                # blank => set from the dashboard
+recursive          = true
+shuffle            = false
+# mp3/flac/wav/ogg decode natively; the rest goes through ffmpeg if available.
+supported_formats  = ["mp3", "flac", "wav", "ogg", "m4a", "opus", "aac", "wma", "aiff", "aif"]
+
+[youtube_music]
+enabled            = false
+cookies_path       = ''                # optional Netscape cookies.txt
+yt_dlp_path        = ''                # blank = `yt-dlp` on PATH
+default_playlist   = ""
+shuffle            = false
+
+[jellyfin]
+enabled            = false
+server_url         = ''                # e.g. 'http://127.0.0.1:8096'
+api_key            = ''                # generate this in the Jellyfin dashboard
+user_id            = ''                # the ID of the user to track playback against
+default_playlist   = ''                # jellyfin playlist ID goes here
+use_favorites      = false             # set to true to play your favorites instead of a playlist
+shuffle            = false             # true or false
+
+[spotify]
+enabled            = false
+default_playlist   = ""                # optional public open.spotify.com playlist/album/track link
+shuffle            = false             # audio is matched from YouTube; no Spotify login/Premium needed
+
+[audio]
+output_gain = 1.0
+
+[playback]
+race_start_playback  = "ignore"    # "next" | "restart" | "ignore" -- action when a race begins
+quick_station_skip   = false       # tune the radio away and back within 1s to skip the track
+volume_normalization = false       # apply ReplayGain (local files) / EBU R128 loudnorm (YT) when on
+equalizer_enabled    = false
+equalizer_bands      = [0.0, 0.0, 0.0, 0.0, 0.0]   # 60/250/1000/4000/12000 Hz, [-6, +6] dB
+force_stereo_audio   = true        # off => mono (avoids metallic phase-cancellation on the 3D radio channel)
+prebuffer_next_track = true        # pre-spawn the next track's pipeline so transitions skip the "(loading)" gap

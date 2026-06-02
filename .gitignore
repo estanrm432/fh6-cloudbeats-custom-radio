@@ -1,0 +1,16 @@
+# Build + staging output
+build/
+/dist/
+
+# Downloaded by scripts\get-deps.ps1
+third_party/
+
+# Radio-station overlay: modified copies of game assets, fetched separately
+# with scripts\fetch-media.ps1 (see its header). Not shipped in the repo.
+media/
+
+# Dependency directories
+node_modules/
+
+# Logo conversion tool (download separately, not committed)
+texconv.exe

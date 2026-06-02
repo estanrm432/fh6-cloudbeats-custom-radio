@@ -1,0 +1,1796 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Horizon CloudBeats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        }
+      }
+    }
+  }
+</script>
+<style>
+  :root { color-scheme: dark; }
+  *, *::before, *::after { box-sizing: border-box; }
+
+  /* Never allow horizontal overflow: on mobile any element wider than the
+     screen makes the browser widen the layout viewport (so everything looks
+     zoomed and the mobile media queries stop matching). */
+  html, body { overflow-x: hidden; max-width: 100%; }
+  /* Long unbreakable strings (paths, URLs) must wrap instead of pushing width. */
+  /* ── Text selection: off by default, on only for editable fields ── */
+	html, body, p, span, div, h1, h2, h3, h4, h5, h6, a, li, td, th, label, code, pre,
+	.card, .section-label, .nav-link, .faq-q, .faq-a, .sp-row-label, .sp-row-desc,
+	.band-label, .sp-eq-label, .sp-eq-out {
+	  -webkit-user-select: none; user-select: none;
+	}
+	input[type="text"], input[type="url"], input[type="search"], input[type="number"],
+	input[type="email"], input[type="password"], textarea, [contenteditable],
+	code.block {
+	  -webkit-user-select: text; user-select: text;
+	}
+	code.block { cursor: text; }
+
+	code, .faq-a, .sp-row-desc { overflow-wrap: anywhere; word-break: break-word; }
+
+  /* ── Geometric soft background ──────────────────────────────── */
+  body {
+    background-color: #080808;
+    background-image:
+      radial-gradient(ellipse 65% 55% at 10% 20%,  rgba(255,255,255,0.025) 0%, transparent 60%),
+      radial-gradient(ellipse 55% 45% at 90% 75%,  rgba(200,200,200,0.018) 0%, transparent 55%),
+      radial-gradient(ellipse 40% 35% at 55% 95%,  rgba(180,180,180,0.012) 0%, transparent 50%),
+      radial-gradient(circle, rgba(255,255,255,0.022) 1px, transparent 1px);
+    background-size: auto, auto, auto, 36px 36px;
+  }
+
+  /* ── Navbar ─────────────────────────────────────────────────── */
+  nav {
+    background: #111;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .nav-link {
+    position: relative;
+    font-size: 17px; font-weight: 500;
+    color: #666; padding: 18px 24px;
+    cursor: pointer; transition: color .2s;
+    background: none; border: none;
+    letter-spacing: .01em;
+  }
+  .nav-link:hover { color: #ccc; }
+  .nav-link.active { color: #fff; }
+  .nav-link.active::after {
+    content: '';
+    position: absolute; bottom: -12px; left: 0; right: 0;
+    height: 1px; background: #fff;
+    border-radius: 1px;
+  }
+  .nav-brand::after { display: none !important; }
+
+  /* ── Range inputs ─────────────────────────────────────────── */
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 14px;
+    background: transparent;
+    outline: none; cursor: pointer; padding: 0; margin: 0;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 3px; background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #fff; cursor: pointer;
+    margin-top: -5.5px;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.06);
+    transition: box-shadow .15s;
+  }
+  input[type="range"]:hover::-webkit-slider-thumb {
+    box-shadow: 0 0 0 5px rgba(255,255,255,0.1);
+  }
+  input[type="range"]::-moz-range-track {
+    height: 3px; background: rgba(255,255,255,0.1); border-radius: 3px;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px; border-radius: 50%; border: 0;
+    background: #fff; cursor: pointer;
+  }
+  input[type="checkbox"] { accent-color: #fff; cursor: pointer; width: 14px; height: 14px; flex-shrink: 0; }
+  select {
+    background: #111; border: 1px solid rgba(255,255,255,0.08);
+    color: #e8e8e8; border-radius: 7px; padding: 8px 11px;
+    outline: none; width: 100%; font-family: inherit; font-size: 14px;
+  }
+  select:focus { border-color: rgba(255,255,255,0.25); }
+
+  /* ── Progress fill ─────────────────────────────────────────── */
+  #np-fill { transition: width .3s linear; }
+
+  /* ── Track title marquee — continuous left scroll, re-enters from right ─ */
+  @keyframes marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+  }
+  .title-marquee { overflow: hidden; white-space: nowrap; }
+  .title-marquee span {
+    display: inline-block;
+    padding-left: 100%;               /* start off the right edge */
+    animation: marquee 26s linear infinite;
+  }
+  /* Short titles that fit stay still — only scroll when flagged overflowing. */
+  .title-marquee:not(.scroll) span { padding-left: 0; animation: none; }
+
+  /* ── Text appear animation ──────────────────────────────────── */
+  @keyframes text-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .anim-in { animation: text-in .35s ease forwards; }
+
+  /* ── Source cards ───────────────────────────────────────────── */
+  .source {
+    position: relative; width: 100%; text-align: left;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07); border-radius: 12px;
+    padding: 16px 18px; cursor: pointer;
+    display: flex; flex-direction: column; gap: 4px;
+    transition: border-color .2s, background .2s, transform .15s, box-shadow .2s;
+  }
+  .source:hover {
+    background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15);
+    transform: translateY(-1px);
+  }
+  .source:active { transform: translateY(0) scale(0.98); }
+  .source.active {
+    background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.22);
+  }
+  .source .name  { font-size: 15px; font-weight: 500; color: #e0e0e0; }
+  .source .state { font-size: 12.5px; font-weight: 400; color: #b8b8b8; }
+  .source.active .state { color: #d0d0d0; }
+  .source .state.warn { color: #fff; }
+  .source .state.err  { color: #ef4444; }
+  .source .auth-note  { font-size: 12px; color: #b0b0b0; line-height: 1.4; margin-top: 2px; }
+
+  /* ── Dynamic buttons ────────────────────────────────────────── */
+  .btn-icon {
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04); color: #666;
+    cursor: pointer; transition: all .2s ease;
+  }
+  .btn-icon:hover {
+    color: #e0e0e0; border-color: rgba(255,255,255,0.22);
+    background: rgba(255,255,255,0.08);
+  }
+  .btn-icon:active { transform: scale(0.96); }
+
+  .btn-play {
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 14px; background: #fff; color: #080808;
+    cursor: pointer; border: none; transition: all .2s ease;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  }
+  .btn-play:hover {
+    box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+    background: #f0f0f0;
+  }
+  .btn-play:active { opacity: 0.85; }
+
+  .btn-primary {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #fff; color: #080808; border: none; border-radius: 10px;
+    font-weight: 600; cursor: pointer; transition: all .2s ease;
+  }
+  .btn-primary:hover {
+    transform: scale(1.04); background: #f0f0f0;
+  }
+  .btn-primary:active { transform: scale(0.97); }
+
+  .btn-ghost {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+    color: #666; border-radius: 10px; cursor: pointer; transition: all .2s ease;
+  }
+  .btn-ghost:hover {
+    background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: #ccc; transform: scale(1.03);
+  }
+  .btn-ghost:active { transform: scale(0.97); }
+
+  /* Options button — navbar color base, animated gradient on hover */
+  .btn-options {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    width: 100%; padding: 18px 28px;
+    background: #111;
+    border: 1px solid rgba(255,255,255,0.13);
+    border-radius: 16px; color: #aaa;
+    font-size: 16px; font-weight: 600; letter-spacing: .05em;
+    cursor: pointer; position: relative; overflow: hidden;
+    transition: border-color .3s ease, color .3s ease, transform .2s ease;
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.03);
+  }
+  .btn-options::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 35%, #1a1a1a 65%, #262626 100%);
+    background-size: 200% 200%;
+    background-position: 0% 50%;
+    opacity: 0;
+    transition: opacity .35s ease, background-position .5s ease;
+  }
+  .btn-options:hover::before {
+    opacity: 1;
+    background-position: 100% 50%;
+  }
+  .btn-options:hover {
+    border-color: rgba(255,255,255,0.22);
+    color: #eee;
+    transform: translateY(-2px);
+  }
+  .btn-options > * { position: relative; z-index: 1; }
+  .btn-options:active { transform: translateY(0) scale(0.98); }
+
+  /* Shuffle active */
+  #yt-shuffle.active {
+    color: #ccc; border-color: rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.08);
+  }
+
+  /* ── Card ───────────────────────────────────────────────────── */
+  .card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 18px;
+  }
+
+  /* ── Cast card stack ────────────────────────────────────────────── */
+  .cast-stack {
+    display: flex; flex-direction: column;
+  }
+
+  /* ── Section labels ─────────────────────────────────────────── */
+  .section-label {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: .16em; text-transform: uppercase; color: #b8b8b8;
+  }
+
+  /* ── Settings drawer ────────────────────────────────────────── */
+  #drawer {
+    transition: transform .3s cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: none !important;
+    visibility: hidden;
+  }
+  #drawer.open {
+    transform: translateX(0) !important;
+    visibility: visible;
+    box-shadow: -20px 0 60px rgba(0,0,0,.9) !important;
+  }
+
+  @keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
+  #scrim { animation: scrim-in .25s ease; }
+
+  /* ── Settings form fields ───────────────────────────────────── */
+  .s-fieldset {
+    border: 1px solid rgba(255,255,255,0.07); border-radius: 10px;
+    padding: 14px 15px; display: flex; flex-direction: column; gap: 11px; margin: 0;
+  }
+  .s-legend { font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #888; padding: 0 4px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field > label { font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: #aaa; }
+  .field input[type="text"], .field input[type="number"] {
+    background: #111; border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 7px; padding: 8px 11px; color: #e8e8e8;
+    font-size: 14px; outline: none; transition: border-color .15s; font-family: inherit;
+  }
+  .field input[type="text"]:focus, .field input[type="number"]:focus { border-color: rgba(255,255,255,0.28); }
+  .field.checkbox { flex-direction: row; align-items: center; gap: 9px; }
+  .field.checkbox label { font-size: 14px; font-weight: 400; color: #ddd; text-transform: none; letter-spacing: 0; cursor: pointer; }
+  .field.bands { gap: 8px; }
+  .field.bands > label { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #888; }
+  .band { display: grid; grid-template-columns: 56px 1fr 50px; align-items: center; gap: 10px; }
+  .band-label { font-size: 11px; color: #999; font-family: 'JetBrains Mono', monospace; }
+  .band output  { font-size: 11px; color: #aaa; text-align: right; font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Toast ──────────────────────────────────────────────────── */
+  @keyframes toast-in {
+    from { opacity: 0; transform: translate(-50%, 10px) scale(.97); }
+    to   { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  }
+  @keyframes toast-out {
+    from { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    to   { opacity: 0; transform: translate(-50%, 8px) scale(.96); }
+  }
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #191919; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px; padding: 10px 18px; font-size: 13px; color: #ccc; z-index: 50;
+    animation: toast-in .2s ease forwards; box-shadow: 0 8px 32px rgba(0,0,0,.8);
+    white-space: nowrap; font-family: 'Inter', sans-serif;
+  }
+  .toast.leaving { animation: toast-out .25s cubic-bezier(0.4, 0, 1, 1) forwards; }
+  .toast.err { border-color: rgba(239,68,68,.35); color: #fca5a5; }
+
+  /* ── Warning popup (top-center, auto-dismiss) ───────────────── */
+  @keyframes warn-in {
+    from { opacity: 0; transform: translate(-50%, -16px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
+  }
+  @keyframes warn-out {
+    from { opacity: 1; transform: translate(-50%, 0); }
+    to   { opacity: 0; transform: translate(-50%, -16px); }
+  }
+  .warn-popup {
+    position: fixed; top: 92px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 12px;
+    max-width: 460px; padding: 14px 20px; z-index: 60;
+    background: #161616; border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 12px; color: #e8e8e8; font-size: 13.5px; line-height: 1.45;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+    animation: warn-in .3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+  .warn-popup.leaving { animation: warn-out .3s cubic-bezier(0.4, 0, 1, 1) forwards; }
+  .warn-popup svg { flex-shrink: 0; color: #fff; }
+
+  /* ── Logo — static, grows on hover (smaller hitbox via wrapper) ─ */
+  .logo-wrap { cursor: default; }
+  .logo-float {
+    filter: drop-shadow(0 6px 22px rgba(255,255,255,0.09));
+    transition: transform .35s cubic-bezier(0.32, 0.72, 0, 1), filter .35s ease;
+  }
+  .logo-wrap:hover .logo-float {
+    transform: scale(1.04);
+    filter: drop-shadow(0 10px 30px rgba(255,255,255,0.15));
+  }
+
+  /* ── Play pulse when playing ────────────────────────────────── */
+  @keyframes play-pulse {
+    0%, 100% { box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+    50%       { box-shadow: 0 6px 20px rgba(0,0,0,0.6); }
+  }
+  .playing .btn-play { animation: play-pulse 2s ease-in-out infinite; }
+
+  /* ── Loading spinner ────────────────────────────────────────── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    display: inline-block;
+    width: 22px; height: 22px;
+    border: 2.5px solid rgba(0,0,0,0.15);
+    border-top-color: #0a0a0a;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  .spinner-light {
+    border: 2px solid rgba(255,255,255,0.15);
+    border-top-color: #fff;
+    width: 16px; height: 16px;
+  }
+
+  /* ── Page transitions ───────────────────────────────────────── */
+  @keyframes page-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .page { animation: page-in .25s ease forwards; }
+
+  /* ── FAQ ────────────────────────────────────────────────────── */
+  .faq-item { border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .faq-item:last-child { border-bottom: none; }
+  .faq-q {
+    font-size: 15px; font-weight: 500; color: #e0e0e0;
+    cursor: pointer; padding: 18px 0;
+    display: flex; justify-content: space-between; align-items: center;
+    transition: color .2s; user-select: none;
+  }
+  .faq-q:hover { color: #fff; }
+  .faq-a {
+    font-size: 14px; color: #777; line-height: 1.7;
+    padding-bottom: 18px; display: none;
+  }
+  .faq-a.open { display: block; }
+  .faq-chevron { transition: transform .2s; color: #444; flex-shrink: 0; }
+  .faq-item.open .faq-chevron { transform: rotate(180deg); color: #888; }
+
+  /* ── Volume markers ────────────────────────────────────────── */
+  .vol-mark {
+    position: absolute; top: 0;
+    transform: translateX(-50%);
+    font-size: 13px; font-weight: 500; font-family: 'JetBrains Mono', monospace;
+    color: #fff; background: none; border: none; cursor: pointer;
+    padding: 3px 6px; border-radius: 5px;
+    transition: opacity .15s, background .15s;
+    letter-spacing: .02em; opacity: 0.45;
+    white-space: nowrap;
+  }
+  .vol-mark:hover { background: rgba(255,255,255,0.05); }
+
+  /* ── Settings floating bar ────────────────────────────────── */
+  @keyframes float-up {
+    from { opacity: 0; transform: translate(-50%, 20px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
+  }
+  #sp-floating-bar { animation: float-up .4s cubic-bezier(0.32, 0.72, 0, 1) both; }
+  #page-options.hidden ~ * #sp-floating-bar,
+  #page-options.hidden #sp-floating-bar { display: none; }
+
+  /* ── Quick source enable ───────────────────────────────────── */
+  .qs-tile {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; padding: 18px 12px; border-radius: 14px; cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.03);
+    transition: all .2s ease;
+    color: #b8b8b8; user-select: none;
+  }
+  .qs-tile:hover {
+    border-color: rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
+    color: #fff; transform: translateY(-1px);
+  }
+  .qs-tile:active { transform: scale(0.97); }
+  .qs-tile.active {
+    border-color: rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.07);
+    color: #fff;
+  }
+  .qs-tile .qs-icon { transition: color .2s; }
+  .qs-tile .qs-label {
+    font-size: 12px; font-weight: 500; letter-spacing: .03em;
+    text-align: center; line-height: 1.3; transition: color .2s;
+  }
+  .qs-tile.active { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.32); color: #fff; }
+
+  /* ── Settings page ─────────────────────────────────────────── */
+  .sp-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 18px; padding: 24px 26px;
+  }
+  .sp-card-title {
+    font-size: 13px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: #c4c4c4; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .sp-card-title svg { color: #888; flex-shrink: 0; }
+  .sp-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; padding: 13px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .sp-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .sp-row:first-of-type { padding-top: 0; }
+  .sp-row-info { flex: 1; min-width: 0; }
+  .sp-row-label { font-size: 15px; font-weight: 500; color: #e0e0e0; }
+  .sp-row-desc  { font-size: 12.5px; color: #999; margin-top: 3px; line-height: 1.45; }
+  .sp-input {
+    background: #0f0f0f; border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 8px; padding: 8px 12px; color: #e0e0e0;
+    font-size: 14px; outline: none; transition: border-color .15s;
+    font-family: inherit; width: 200px; flex-shrink: 0;
+  }
+  .sp-input:focus { border-color: rgba(255,255,255,0.28); }
+  .sp-input.wide  { width: 100%; margin-top: 8px; }
+  .sp-row.vertical { flex-direction: column; align-items: flex-start; }
+  .sp-select {
+    background: #0f0f0f;
+    border: 1px solid rgba(255,255,255,0.09);
+    color: #e0e0e0; border-radius: 8px;
+    padding: 9px 36px 9px 13px;
+    font-family: inherit; font-size: 14px; outline: none;
+    cursor: pointer; width: 100%; margin-top: 8px;
+    -webkit-appearance: none; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    transition: border-color .2s, background-color .2s;
+  }
+  .sp-select:hover { border-color: rgba(255,255,255,0.2); background-color: #151515; }
+  .sp-select:focus { border-color: rgba(255,255,255,0.32); }
+  /* Toggle switch */
+  .sp-toggle { position: relative; width: 48px; height: 28px; flex-shrink: 0; cursor: pointer; }
+  .sp-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .sp-toggle-track {
+    position: absolute; inset: 0;
+    background: #1c1c1c; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 28px; transition: background .2s, border-color .2s;
+  }
+  .sp-toggle-track::after {
+    content: ''; position: absolute; left: 4px; top: 50%; transform: translateY(-50%);
+    width: 18px; height: 18px; border-radius: 50%; background: #444;
+    transition: transform .2s, background .2s;
+  }
+  .sp-toggle input:checked ~ .sp-toggle-track {
+    background: #2d2d2d; border-color: rgba(255,255,255,0.28);
+  }
+  .sp-toggle input:checked ~ .sp-toggle-track::after {
+    transform: translate(20px, -50%); background: #fff;
+  }
+  /* EQ bands in settings page */
+  .sp-eq-band {
+    display: grid; grid-template-columns: 64px 1fr 54px;
+    align-items: center; gap: 14px; padding: 6px 0;
+  }
+  .sp-eq-label { font-size: 12px; color: #aaa; font-family: 'JetBrains Mono', monospace; }
+  .sp-eq-out   { font-size: 12px; color: #bbb; font-family: 'JetBrains Mono', monospace; text-align: right; }
+
+  /* ── Home side column (logo) spacing ─────────────────────────── */
+  @media (min-width: 1024px) {
+    /* Centre the credits under the left controls column (subtract the right
+       logo column width + the gap so it isn't centred across the empty space). */
+    .home-credits { padding-right: calc(390px + 24px); }
+  }
+  @media (max-width: 1023px) {
+    .home-side { margin-top: 4px; }
+    .home-side .logo-wrap { width: 170px !important; height: 170px !important; }
+    .home-side .logo-float { width: 210px !important; height: 210px !important; }
+  }
+
+  /* ── Mobile (≤640px) ────────────────────────────────────────── */
+  @media (max-width: 640px) {
+    /* Navbar: tighter padding, smaller logo + links */
+    .nav-inner { padding-left: 16px; padding-right: 16px; height: 60px; }
+    #nav-logo { height: 36px !important; }
+    .nav-links { gap: 14px; }
+    .nav-link { font-size: 14px; padding: 12px 8px; }
+
+    /* Pages: less horizontal padding */
+    #page-home, #page-faq { padding-left: 16px; padding-right: 16px;
+                            padding-top: 16px; padding-bottom: 16px; }
+
+    /* Cards: trimmer padding */
+    .card { border-radius: 14px; }
+
+    /* Now playing: shrink art, gaps and controls so it fits a phone */
+    #now-playing-card { padding: 16px !important; }
+    #now-playing-card > div { gap: 14px !important; }
+    #np-art { width: 64px !important; height: 64px !important; border-radius: 12px !important; }
+    #np-title { font-size: 19px !important; }
+    #np-artist { font-size: 14px !important; }
+    #t-prev, #t-next { width: 42px !important; height: 42px !important; }
+    #t-play { width: 50px !important; height: 50px !important; }
+    #now-playing-card .flex.items-center.gap-3 { gap: 8px !important; }
+
+    /* FAQ heading a touch smaller */
+    #page-faq h1 { font-size: 23px; }
+
+    /* Settings page header stacks the reload button under the title */
+    #page-options { padding-left: 16px !important; padding-right: 16px !important; }
+  }
+
+  /* ── Misc ───────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
+  button:focus-visible { outline: 2px solid rgba(255,255,255,.15); outline-offset: 2px; border-radius: 6px; }
+  input:focus-visible { outline: none; }
+</style>
+</head>
+
+<body class="min-h-screen text-white font-sans antialiased flex flex-col">
+
+<!-- ── Navbar ───────────────────────────────────────────────────────────── -->
+<nav class="flex-shrink-0">
+  <div class="nav-inner max-w-[1200px] mx-auto px-10 h-20 flex items-center justify-between">
+    <!-- Logo + name -->
+    <div class="flex items-center">
+      <button class="nav-link nav-brand active" data-page="home" style="padding:6px 10px;">
+        <img id="nav-logo" src="horizonlogo.png" alt="Horizon CloudBeats" class="select-none" style="height:48px; width:auto; display:block; margin-top:3px; user-select:none; -webkit-user-drag:none;" draggable="false">
+      </button>
+    </div>
+    <!-- Nav links -->
+    <div class="nav-links flex items-center gap-9">
+      <button class="nav-link active" data-page="home">Home</button>
+      <button class="nav-link" id="nav-options" data-nav="options">Options</button>
+      <button class="nav-link" data-page="faq">FAQ</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Home page ────────────────────────────────────────────────────────── -->
+<div id="page-home" class="page flex-1 flex flex-col items-center justify-center py-8 px-6 lg:px-8">
+  <div class="w-full max-w-[1200px] flex flex-col lg:flex-row gap-6">
+
+    <!-- Left: controls -->
+    <div class="flex-1 flex flex-col gap-4 min-w-0">
+
+      <!-- Now Playing -->
+      <div class="card p-7" id="now-playing-card">
+        <div class="flex gap-6 items-start">
+          <div class="w-[118px] h-[118px] rounded-2xl bg-[#111] border border-white/[0.06] flex-shrink-0 flex items-center justify-center overflow-hidden relative" id="np-art">
+            <!-- Default SVG placeholder (replaced dynamically when artwork loads) -->
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" class="text-neutral-400" id="np-art-icon">
+              <path d="M9 18V5l12-2v13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="1.5"/>
+              <circle cx="18" cy="16" r="3" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <div class="flex-1 min-w-0 pt-1">
+            <div class="title-marquee mb-0.5">
+              <span class="text-[26px] font-semibold text-white/95 leading-snug" id="np-title">Nothing playing</span>
+            </div>
+            <div class="text-[17px] text-neutral-300 truncate mt-1 leading-snug" id="np-artist"></div>
+            <div class="mt-5">
+              <div class="h-[3px] bg-white/[0.07] rounded-full overflow-hidden">
+                <div class="h-full rounded-full w-0" id="np-fill" style="background:rgba(255,255,255,0.7);"></div>
+              </div>
+              <div class="flex justify-between mt-2">
+                <span class="text-[12px] text-neutral-300 tabular-nums font-mono" id="np-pos">0:00</span>
+                <span class="text-[12px] text-neutral-300 tabular-nums font-mono" id="np-dur">0:00</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 flex-shrink-0 pt-1">
+            <button id="t-prev" title="Previous" class="btn-icon w-13 h-13" style="width:52px;height:52px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+            </button>
+            <button id="t-play" title="Play / Pause" class="btn-play" style="width:64px;height:64px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <button id="t-next" title="Next" class="btn-icon" style="width:52px;height:52px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm2.5-6 5.5 4V8l-5.5 4zM16 6h2v12h-2z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cast / path cards — one per source, shown via enableOnlySource -->
+      <div class="cast-stack">
+
+      <!-- Spotify -->
+      <div id="sp-cast-card" class="card p-6" hidden>
+        <div class="section-label mb-1">Play Spotify Playlist</div>
+        <p class="text-[13px] text-neutral-300 mt-1.5 mb-4 leading-relaxed">Paste a public Spotify playlist, album, or track link.</p>
+        <form id="sp-cast" class="flex gap-2.5">
+          <input type="text" id="sp-url" placeholder="https://open.spotify.com/playlist/…" autocomplete="off"
+            class="flex-1 min-w-0 bg-[#0f0f0f] border border-white/[0.08] rounded-[10px] px-4 py-2.5 text-[14px] text-white/90 placeholder-neutral-800 outline-none focus:border-white/[0.2] transition-colors">
+          <button type="submit" class="btn-primary px-5 py-2.5 text-[13px] flex-shrink-0">Play</button>
+          <button type="button" id="sp-shuffle" title="Shuffle" class="btn-icon w-10 h-10 flex-shrink-0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+          </button>
+        </form>
+      </div>
+
+      <!-- YouTube Music -->
+      <div id="yt-cast-card" class="card p-6" hidden>
+        <div class="section-label mb-1">Cast to YouTube Music</div>
+        <p class="text-[13px] text-neutral-300 mt-1.5 mb-4 leading-relaxed">Paste any YouTube or YouTube Music URL (video or playlist).</p>
+        <form id="yt-cast" class="flex gap-2.5">
+          <input type="text" id="yt-url" placeholder="https://music.youtube.com/playlist?list=…" autocomplete="off"
+            class="flex-1 min-w-0 bg-[#0f0f0f] border border-white/[0.08] rounded-[10px] px-4 py-2.5 text-[14px] text-white/90 placeholder-neutral-800 outline-none focus:border-white/[0.2] transition-colors">
+          <button type="submit" class="btn-primary px-5 py-2.5 text-[13px] flex-shrink-0">Cast</button>
+          <button type="button" id="yt-shuffle" title="Shuffle" class="btn-icon w-10 h-10 flex-shrink-0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+          </button>
+        </form>
+      </div>
+
+      <!-- Jellyfin -->
+      <div id="jf-cast-card" class="card p-6" hidden>
+        <div class="section-label mb-1">Play Jellyfin Playlist</div>
+        <p class="text-[13px] text-neutral-300 mt-1.5 mb-4 leading-relaxed">Enter a Jellyfin Playlist ID to start streaming.</p>
+        <form id="jf-cast" class="flex gap-2.5">
+          <input type="text" id="jf-url" autocomplete="off"
+            class="flex-1 min-w-0 bg-[#0f0f0f] border border-white/[0.08] rounded-[10px] px-4 py-2.5 text-[14px] text-white/90 placeholder-neutral-800 outline-none focus:border-white/[0.2] transition-colors">
+          <button type="submit" class="btn-primary px-5 py-2.5 text-[13px] flex-shrink-0">Play</button>
+        </form>
+      </div>
+
+      <!-- Local Files -->
+      <div id="lf-cast-card" class="card p-6" hidden>
+        <div class="section-label mb-1">Local Files — Music Folder</div>
+        <p class="text-[13px] text-neutral-300 mt-1.5 mb-4 leading-relaxed">Set the folder where your music files are stored. Changes apply immediately and sync with the Options page.</p>
+        <form id="lf-cast" class="flex gap-2.5">
+          <input type="text" id="lf-path" placeholder="C:\Users\...\Music" autocomplete="off"
+            class="flex-1 min-w-0 bg-[#0f0f0f] border border-white/[0.08] rounded-[10px] px-4 py-2.5 text-[14px] text-white/90 placeholder-neutral-800 outline-none focus:border-white/[0.2] transition-colors">
+          <button type="submit" class="btn-primary px-5 py-2.5 text-[13px] flex-shrink-0">Set</button>
+        </form>
+      </div>
+
+      </div><!-- /cast-stack -->
+
+      <!-- Quick source enable -->
+      <div class="card p-5">
+        <div class="section-label mb-4">Enable source</div>
+        <div id="qs-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+      </div>
+
+      <!-- Volume -->
+      <div class="card px-7 py-5">
+        <div class="flex items-center gap-5">
+          <span class="section-label w-16 flex-shrink-0">Volume</span>
+          <div class="flex-1 flex flex-col gap-2">
+            <input type="range" id="vol" min="0" max="1" step="0.05" value="1" list="vol-marks"
+                   style="width:100%; display:block;">
+            <div id="vol-markers" style="position:relative; height:22px;">
+              <button type="button" class="vol-mark" data-val="0.25" style="left:calc(25% + 3.5px)">25%</button>
+              <button type="button" class="vol-mark" data-val="0.50" style="left:50%">50%</button>
+              <button type="button" class="vol-mark" data-val="0.75" style="left:calc(75% - 3.5px)">75%</button>
+              <button type="button" class="vol-mark vol-mark-current" data-val="1.00" style="left:calc(100% - 7px); opacity:1; padding:0;"><output id="vol-out" class="tabular-nums font-mono" style="font-size:12px;color:#fff;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);border-radius:6px;padding:3px 8px;display:inline-block;cursor:pointer;">100%</output></button>
+            </div>
+          </div>
+        </div>
+        <datalist id="vol-marks">
+          <option value="0.25"></option>
+          <option value="0.50"></option>
+          <option value="0.75"></option>
+          <option value="1.00"></option>
+        </datalist>
+      </div>
+
+    </div>
+
+    <!-- Right: logo + tagline + options -->
+    <div class="home-side w-full lg:w-[390px] flex-shrink-0 flex flex-col items-center lg:self-center">
+      <div class="logo-wrap" style="width:220px; height:220px; display:flex; align-items:center; justify-content:center; padding: 6px;">
+        <img src="CloudBeats.png" alt="Horizon CloudBeats"
+          class="logo-float select-none object-contain" style="width:280px; height:280px; max-width:none; flex-shrink:0; border-radius:40px; user-select:none; -webkit-user-select:none; -webkit-user-drag:none; pointer-events:none;" draggable="false">
+      </div>
+      <div class="text-center px-2 mt-8">
+        <p class="text-[20px] font-medium text-white/80 leading-snug">Your favourite music<br>from any platform</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Credits — page footer (stays at the very bottom on mobile too) -->
+  <div class="home-credits w-full max-w-[1200px] mx-auto pt-5 text-center">
+    <p class="text-[13px] text-neutral-400 leading-relaxed">
+      Made by
+      <a href="https://github.com/MyLuxy" target="_blank" rel="noopener noreferrer"
+        class="text-neutral-400 hover:text-white transition-colors font-medium underline underline-offset-2">MyLuxy</a>
+      &nbsp;&mdash;&nbsp;
+      <a href="https://github.com/MyLuxy/fh6-cloudbeats-custom-radio" target="_blank" rel="noopener noreferrer"
+        class="text-neutral-400 hover:text-white transition-colors underline underline-offset-2">fh6-cloudbeats-custom-radio</a>
+    </p>
+  </div>
+</div>
+
+<!-- ── FAQ page ──────────────────────────────────────────────────────────── -->
+<div id="page-faq" class="hidden page flex-1 flex items-center justify-center py-10 px-6 lg:px-8">
+  <div class="w-full max-w-[720px]">
+
+    <h1 class="text-[28px] font-semibold text-white/90 mb-1">Frequently Asked Questions</h1>
+    <p class="text-[14px] text-neutral-600 mb-10">Everything you need to know about Horizon CloudBeats.</p>
+
+    <div class="card p-2">
+      <!-- Q1 -->
+      <div class="faq-item px-5">
+        <div class="faq-q">
+          What is Horizon CloudBeats?
+          <svg class="faq-chevron w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="faq-a">Horizon CloudBeats is a mod for Forza Horizon 6 that replaces the in-game radio with your own music. You can stream from local files, YouTube Music, or a Jellyfin server — all controlled from this web dashboard running locally on your PC.</div>
+      </div>
+      <!-- Q2 -->
+      <div class="faq-item px-5">
+        <div class="faq-q">
+          How do I install it?
+          <svg class="faq-chevron w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="faq-a">Extract the mod ZIP into your Forza Horizon 6 install folder — the same folder that contains <code class="bg-white/[0.06] px-1.5 py-0.5 rounded text-neutral-300 text-[13px]">forzahorizon6.exe</code>. Then launch the game, go to <strong class="text-neutral-300">Audio Settings</strong>, set <strong class="text-neutral-300">Radio DJ = Off</strong> and <strong class="text-neutral-300">Streamer Mode = On</strong>. Cycle through the radio stations until you land on Horizon CloudBeats.</div>
+      </div>
+      <!-- Q3 -->
+      <div class="faq-item px-5">
+        <div class="faq-q">
+          What music sources are supported?
+          <svg class="faq-chevron w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="faq-a">Four sources are available:<br><br>
+          <strong class="text-neutral-300">Spotify</strong> — Paste any public playlist, album, or track link. No Premium and no login required — tracks are matched and streamed via YouTube.<br><br>
+          <strong class="text-neutral-300">YouTube Music</strong> — Paste any video or playlist URL directly from the dashboard.<br><br>
+          <strong class="text-neutral-300">Jellyfin</strong> — Stream playlists from your own Jellyfin media server.<br><br>
+          <strong class="text-neutral-300">Local Files</strong> — Point it at any folder. MP3, FLAC, WAV and OGG work out of the box. M4A, AAC, OPUS, WMA and others require ffmpeg (see Options).</div>
+      </div>
+      <!-- Q4 -->
+      <div class="faq-item px-5">
+        <div class="faq-q">
+          Do I need anything extra for YouTube Music?
+          <svg class="faq-chevron w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="faq-a">Yes. Open a terminal and run:<br><br>
+          <code class="block bg-white/[0.04] border border-white/[0.07] rounded-lg px-4 py-3 text-[13px] text-neutral-300 font-mono leading-relaxed">winget install yt-dlp.yt-dlp<br>winget install Gyan.FFmpeg<br>winget install DenoLand.Deno</code><br>
+          For private or age-restricted content, export a <code class="bg-white/[0.06] px-1.5 py-0.5 rounded text-[13px] text-neutral-300">cookies.txt</code> from your browser using an extension like <em>Get cookies.txt LOCALLY</em>, then set the path in Options.</div>
+      </div>
+      <!-- Q5 -->
+      <div class="faq-item px-5">
+        <div class="faq-q">
+          The music isn't playing, what do I do?
+          <svg class="faq-chevron w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="faq-a">Check these things in order:<br><br>
+          1. <strong class="text-neutral-300">Streamer Mode</strong> must be <strong class="text-neutral-300">On</strong> in Audio Settings.<br>
+          2. Make sure you're tuned to the Horizon CloudBeats station in-game.<br>
+          3. In the dashboard, select a source and press Play.<br>
+          4. If using local files, set your music directory in Options.<br>
+          5. If the bridge status shows offline, check that <code class="bg-white/[0.06] px-1.5 py-0.5 rounded text-[13px] text-neutral-300">version.dll</code> was installed correctly and your antivirus hasn't quarantined it.</div>
+      </div>
+      <!-- Q6 -->
+      <div class="faq-item px-5">
+        <div class="faq-q">
+          Can I access the dashboard from another device?
+          <svg class="faq-chevron w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="faq-a">Yes. From any device on the same network, open <code class="bg-white/[0.06] px-1.5 py-0.5 rounded text-[13px] text-neutral-300">http://[your-PC-IP]:8420</code> in a browser. Run <code class="bg-white/[0.06] px-1.5 py-0.5 rounded text-[13px] text-neutral-300">ipconfig</code> in Command Prompt to find your PC's local IP address.</div>
+      </div>
+      <!-- Q7 -->
+      <div class="faq-item px-5">
+        <div class="faq-q">
+          How do I skip tracks without using the dashboard?
+          <svg class="faq-chevron w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="faq-a">Enable <strong class="text-neutral-300">Quick Station Skip</strong> in Options. Then, while in-game, briefly tune the radio knob away from Horizon CloudBeats and immediately back within 1 second — this skips to the next track.</div>
+      </div>
+      <!-- Q8 -->
+      <div class="faq-item px-5">
+        <div class="faq-q">
+          Does the music respect in-game volume?
+          <svg class="faq-chevron w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="faq-a">Yes. Audio is routed through FH6's radio bus, so it fades during menus, cutscenes, and respects the game's volume settings exactly like any other radio station.</div>
+      </div>
+      <!-- Q9 - Credits -->
+      <div class="faq-item px-5">
+        <div class="faq-q">
+          Credits
+          <svg class="faq-chevron w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="faq-a">
+          Built on
+          <a href="https://github.com/g0ldyy/fh6-universal-radio" target="_blank" rel="noopener noreferrer"
+            class="text-neutral-300 hover:text-white transition-colors underline underline-offset-2">FH6 Universal Radio</a>
+          by
+          <a href="https://github.com/g0ldyy" target="_blank" rel="noopener noreferrer"
+            class="text-neutral-300 hover:text-white transition-colors underline underline-offset-2">g0ldyy</a>
+          &mdash; released under
+          <a href="https://github.com/g0ldyy/fh6-universal-radio/blob/main/LICENSE" target="_blank" rel="noopener noreferrer"
+            class="text-neutral-300 hover:text-white transition-colors underline underline-offset-2">GPLv3</a>.
+          <br><br>
+          Support the upstream author:
+          <a href="https://github.com/sponsors/g0ldyy" target="_blank" rel="noopener noreferrer"
+            class="text-neutral-300 hover:text-white transition-colors underline underline-offset-2">GitHub Sponsors</a>
+          &middot;
+          <a href="https://ko-fi.com/g0ldyy" target="_blank" rel="noopener noreferrer"
+            class="text-neutral-300 hover:text-white transition-colors underline underline-offset-2">Ko-fi</a>
+        </div>
+      </div>
+    </div>
+
+
+  </div>
+</div>
+
+<!-- ── Options page ─────────────────────────────────────────────────────── -->
+<div id="page-options" class="hidden page flex-1 py-8 px-10 lg:px-16 xl:px-24">
+
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-4 mb-8">
+      <div class="text-left">
+        <h1 class="text-[28px] font-semibold text-white/90 leading-tight">Settings</h1>
+        <p class="text-[13px] text-neutral-400 mt-1.5">Changes are saved to <code class="text-neutral-300 bg-white/[0.04] px-1.5 py-0.5 rounded text-[12px]">config.toml</code> and take effect immediately.</p>
+      </div>
+      <button id="sp-reload" class="btn-ghost px-5 py-2.5 text-[13px] flex-shrink-0 mt-1">Reload from disk</button>
+    </div>
+
+    <!-- Grid — 3 columns on wide screens -->
+    <div id="sp-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+
+</div>
+
+<!-- ── Settings Drawer ───────────────────────────────────────────────────── -->
+<aside id="drawer"
+  class="fixed top-0 right-0 bottom-0 w-full max-w-[390px] flex flex-col z-20 translate-x-full"
+  style="background:#0f0f0f; border-left:1px solid rgba(255,255,255,0.07); box-shadow:-20px 0 60px rgba(0,0,0,.9);"
+  aria-hidden="true">
+  <div class="flex items-center justify-between px-5 flex-shrink-0 h-[56px]" style="border-bottom:1px solid rgba(255,255,255,0.07);">
+    <span class="text-[15px] font-semibold text-white/90 tracking-wide select-none">Settings</span>
+    <button id="close-settings" class="btn-icon w-7 h-7" aria-label="Close">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
+  </div>
+  <form id="settings-form" class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3"></form>
+  <div class="flex gap-2 px-5 flex-shrink-0 h-[56px] items-center" style="border-top:1px solid rgba(255,255,255,0.07);">
+    <button id="reload-config" class="btn-ghost flex-1 h-9 text-[13px]">Reload from disk</button>
+    <button id="save-config" class="btn-primary flex-1 h-9 text-[13px]">Save</button>
+  </div>
+</aside>
+<div id="scrim" class="fixed inset-0 z-10" style="background:rgba(0,0,0,0.75); backdrop-filter:blur(3px);" hidden></div>
+
+<!-- ── App Logic ────────────────────────────────────────────────────────── -->
+<script type="module">
+const $  = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+const api = {
+  async get(path)        { return (await fetch(path)).json(); },
+  async send(path, body, method = "POST") {
+    const r = await fetch(path, {
+      method,
+      headers: body ? { "content-type": "application/json" } : {},
+      body:    body ? JSON.stringify(body) : undefined,
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+    return r.json().catch(() => ({}));
+  },
+};
+
+let state = null;
+let cfg   = null;
+
+/* ── Navigation ──────────────────────────────────────────────────────────── */
+function showPage(name) {
+  ["home","faq","options"].forEach(p =>
+    document.getElementById("page-"+p).classList.toggle("hidden", p !== name)
+  );
+  $$(".nav-link[data-page], .nav-link[data-nav]").forEach(el => {
+    const key = el.dataset.page || el.dataset.nav;
+    el.classList.toggle("active", key === name);
+  });
+  if (name === "options") renderSettingsPage();
+  if (name === "home") renderQuickSource();
+}
+
+/* ── Settings page schema ─────────────────────────────────────────────────── */
+const SP_SECTIONS = [
+  {
+    id: "general", title: "General",
+    icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+    fields: [
+      { key:"port",            label:"Dashboard port",       desc:"HTTP port for this web dashboard",            type:"number", min:1, max:65535 },
+      { key:"ring_buffer_mb",  label:"Audio buffer",         desc:"MB allocated to the audio ring buffer — increase if audio stutters", type:"number", min:1, max:64 },
+      { key:"default_source",  label:"Default source",       desc:"Source activated on startup",                 type:"text" },
+      { key:"fallback_source", label:"Fallback source",      desc:"Used when the default source is unavailable", type:"text" },
+      { key:"ffmpeg_path",     label:"FFmpeg path",          desc:"Leave empty to use the system PATH",          type:"text", wide:true },
+    ]
+  },
+  {
+    id: "spotify", title: "Spotify",
+    icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.59 14.43a.62.62 0 0 1-.86.21c-2.35-1.44-5.3-1.76-8.79-.96a.62.62 0 1 1-.28-1.21c3.81-.87 7.08-.5 9.72 1.11.29.18.39.57.21.85zm1.22-2.72a.78.78 0 0 1-1.07.26c-2.69-1.65-6.79-2.13-9.97-1.17a.78.78 0 1 1-.45-1.49c3.63-1.1 8.15-.56 11.24 1.33.37.23.49.71.25 1.07zm.11-2.84C14.8 8.9 9.3 8.72 6.18 9.67a.93.93 0 1 1-.54-1.79c3.58-1.08 9.66-.87 13.48 1.4a.93.93 0 1 1-.96 1.6z"/></svg>`,
+    fields: [
+      { key:"enabled",          label:"Enable Spotify",   desc:"Play public Spotify playlists — audio streamed from YouTube, no login or Premium", type:"toggle" },
+      { key:"shuffle",          label:"Shuffle",          desc:"Randomise playlist order", type:"toggle" },
+      { key:"default_playlist", label:"Default playlist", desc:"open.spotify.com link loaded on startup", type:"text", wide:true },
+    ]
+  },
+  {
+    id: "youtube_music", title: "YouTube Music",
+    icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33-.22 2.65-.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73z"/></svg>`,
+    fields: [
+      { key:"enabled",          label:"Enable YouTube Music", desc:"Stream videos and playlists from YouTube", type:"toggle" },
+      { key:"shuffle",          label:"Shuffle",              desc:"Randomise playlist order",                type:"toggle" },
+      { key:"cookies_path",     label:"Cookies file",         desc:"Path to cookies.txt for private/age-restricted content", type:"text", wide:true },
+      { key:"yt_dlp_path",      label:"yt-dlp path",          desc:"Leave empty to use the system PATH",      type:"text", wide:true },
+      { key:"default_playlist", label:"Default playlist URL", desc:"Loaded automatically on startup",         type:"text", wide:true },
+    ]
+  },
+  {
+    id: "jellyfin", title: "Jellyfin",
+    icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
+    fields: [
+      { key:"enabled",          label:"Enable Jellyfin",   desc:"Stream from your personal Jellyfin server", type:"toggle" },
+      { key:"use_favorites",    label:"Use favorites",     desc:"Stream your favorited tracks instead of a playlist", type:"toggle" },
+      { key:"shuffle",          label:"Shuffle",           desc:"Randomise playlist order", type:"toggle" },
+      { key:"server_url",       label:"Server URL",        desc:"e.g. http://192.168.1.10:8096",             type:"text", wide:true },
+      { key:"user_id",          label:"User ID",           desc:"Your Jellyfin user ID",                     type:"text", wide:true },
+      { key:"api_key",          label:"API key",           desc:"Found in Jellyfin Dashboard → API Keys",    type:"text", wide:true },
+      { key:"default_playlist", label:"Default playlist",  desc:"Playlist ID loaded on startup",             type:"text", wide:true },
+    ]
+  },
+  {
+    id: "local_files", title: "Local Files",
+    icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3h6l2 3h10a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/></svg>`,
+    fields: [
+      { key:"enabled",   label:"Enable local files",   desc:"Stream music from a folder on this machine", type:"toggle" },
+      { key:"music_dir", label:"Music folder",         desc:"Absolute path to your music directory",      type:"text", wide:true },
+      { key:"recursive", label:"Scan subfolders",      desc:"Include files in nested folders",            type:"toggle" },
+      { key:"shuffle",   label:"Shuffle",              desc:"Randomise playback order",                   type:"toggle" },
+    ]
+  },
+  {
+    id: "playback", title: "Playback & Audio",
+    icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
+    fields: [
+      { section:"audio", key:"output_gain",  label:"Output gain", desc:"Master volume multiplier (0 – 1)", type:"number", min:0, max:1, step:0.01 },
+      { key:"race_start_playback",     label:"On race start",          desc:"What to do when a race begins",               type:"select", options:["next","restart","ignore"] },
+      { key:"quick_station_skip",      label:"Quick station skip",     desc:"Tune away and back within 1 s to skip track", type:"toggle" },
+      { key:"volume_normalization",    label:"Normalize loudness",     desc:"Equalise volume across tracks",               type:"toggle" },
+      { key:"force_stereo_audio",      label:"Force stereo output",    desc:"Always output 2-channel audio",               type:"toggle" },
+      { key:"prebuffer_next_track",    label:"Pre-buffer next track",  desc:"Start loading the next track early for gap-free transitions", type:"toggle" },
+      { key:"show_track_notification", label:"Track change banner",    desc:"Show the in-game station banner on every track change", type:"toggle" },
+      { key:"equalizer_enabled",       label:"Equalizer",              desc:"Enable the 5-band EQ",                        type:"toggle" },
+      { key:"equalizer_bands",         label:"EQ bands",               desc:"60 Hz · 250 Hz · 1 kHz · 4 kHz · 12 kHz",   type:"bands" },
+    ]
+  },
+];
+
+function renderSettingsPage() {
+  const grid = document.getElementById("sp-grid");
+  grid.innerHTML = SP_SECTIONS.map(sec => {
+    const rows = sec.fields.map(f => {
+      const fieldSec = f.section ?? sec.id;
+      const id  = `sp-${fieldSec}-${f.key}`;
+      const val = cfg?.[fieldSec]?.[f.key];
+      if (f.type === "toggle") {
+        return `<div class="sp-row">
+          <div class="sp-row-info">
+            <div class="sp-row-label">${f.label}</div>
+            <div class="sp-row-desc">${f.desc}</div>
+          </div>
+          <label class="sp-toggle" title="${f.label}">
+            <input type="checkbox" id="${id}" data-sp-section="${fieldSec}" data-sp-key="${f.key}" ${val ? "checked" : ""}>
+            <div class="sp-toggle-track"></div>
+          </label>
+        </div>`;
+      }
+      if (f.type === "select") {
+        const opts = f.options.map(o => `<option value="${o}" ${val===o?"selected":""}>${o}</option>`).join("");
+        return `<div class="sp-row vertical">
+          <div class="sp-row-info" style="width:100%">
+            <div class="sp-row-label">${f.label}</div>
+            <div class="sp-row-desc">${f.desc}</div>
+          </div>
+          <select id="${id}" class="sp-select" data-sp-section="${fieldSec}" data-sp-key="${f.key}">${opts}</select>
+        </div>`;
+      }
+      if (f.type === "bands") {
+        const EQL = ["60 Hz","250 Hz","1 kHz","4 kHz","12 kHz"];
+        const vals = Array.isArray(val) ? val : [0,0,0,0,0];
+        const brows = EQL.map((lbl,i) => `
+          <div class="sp-eq-band">
+            <span class="sp-eq-label">${lbl}</span>
+            <input type="range" min="-6" max="6" step="0.5" value="${vals[i]??0}"
+              data-sp-section="${fieldSec}" data-sp-key="${f.key}" data-sp-index="${i}"
+              style="height:3px;background:rgba(255,255,255,0.1);border-radius:3px;">
+            <output class="sp-eq-out">${(vals[i]??0).toFixed(1)} dB</output>
+          </div>`).join("");
+        return `<div class="sp-row vertical">
+          <div class="sp-row-info" style="width:100%">
+            <div class="sp-row-label">${f.label}</div>
+            <div class="sp-row-desc">${f.desc}</div>
+          </div>
+          <div style="width:100%;margin-top:12px;">${brows}</div>
+        </div>`;
+      }
+      const inputType = f.type === "number" ? "number" : "text";
+      const attrs = f.type === "number" ? ` min="${f.min??""}" max="${f.max??""}" step="${f.step??1}"` : "";
+      if (f.wide) {
+        return `<div class="sp-row vertical">
+          <div class="sp-row-info" style="width:100%">
+            <div class="sp-row-label">${f.label}</div>
+            <div class="sp-row-desc">${f.desc}</div>
+          </div>
+          <input id="${id}" type="${inputType}" class="sp-input wide"${attrs}
+            data-sp-section="${fieldSec}" data-sp-key="${f.key}" value="${val??''}">
+        </div>`;
+      }
+      return `<div class="sp-row">
+        <div class="sp-row-info">
+          <div class="sp-row-label">${f.label}</div>
+          <div class="sp-row-desc">${f.desc}</div>
+        </div>
+        <input id="${id}" type="${inputType}" class="sp-input"${attrs}
+          data-sp-section="${fieldSec}" data-sp-key="${f.key}" value="${val??''}">
+      </div>`;
+    }).join("");
+    return `<div class="sp-card">
+      <div class="sp-card-title">${sec.icon}${sec.title}</div>
+      ${rows}
+    </div>`;
+  }).join("");
+
+  // Wire EQ sliders live readout
+  $$(".sp-eq-band input[type='range']", grid).forEach(r => {
+    const out = r.nextElementSibling;
+    r.addEventListener("input", () => { if(out) out.textContent = `${parseFloat(r.value).toFixed(1)} dB`; });
+  });
+
+  // Auto-save on every change
+  $$("[data-sp-section]", grid).forEach(el => {
+    if (el.type === "checkbox") {
+      el.addEventListener("change", () => autoSaveField(el));
+    } else if (el.tagName === "SELECT") {
+      el.addEventListener("change", () => autoSaveField(el));
+    } else if (el.type === "range") {
+      // Save when user releases (avoid spamming PATCHes during drag)
+      el.addEventListener("change", () => autoSaveField(el));
+    } else {
+      // text / number → debounced
+      el.addEventListener("input", () => autoSaveDebounced(el));
+    }
+  });
+}
+
+function collectSettingsPage() {
+  const patch = {};
+  $$("#sp-grid [data-sp-section]").forEach(el => {
+    const sec = el.dataset.spSection, key = el.dataset.spKey;
+    if (!sec || !key) return;
+    (patch[sec] ??= {});
+    if (el.dataset.spIndex !== undefined) {
+      (patch[sec][key] ??= [])[parseInt(el.dataset.spIndex,10)] = parseFloat(el.value);
+      return;
+    }
+    if (el.type === "checkbox") patch[sec][key] = el.checked;
+    else if (el.type === "number" || el.type === "range") patch[sec][key] = parseFloat(el.value);
+    else patch[sec][key] = el.value;
+  });
+  return patch;
+}
+
+/* ── Quick source enable ──────────────────────────────────────────────────── */
+// Display order across the whole dashboard: Spotify, YouTube Music, Jellyfin,
+// Local Files.
+const QS_SOURCES = [
+  {
+    id: "spotify",
+    label: "Spotify",
+    icon: `<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.59 14.43a.62.62 0 0 1-.86.21c-2.35-1.44-5.3-1.76-8.79-.96a.62.62 0 1 1-.28-1.21c3.81-.87 7.08-.5 9.72 1.11.29.18.39.57.21.85zm1.22-2.72a.78.78 0 0 1-1.07.26c-2.69-1.65-6.79-2.13-9.97-1.17a.78.78 0 1 1-.45-1.49c3.63-1.1 8.15-.56 11.24 1.33.37.23.49.71.25 1.07zm.11-2.84C14.8 8.9 9.3 8.72 6.18 9.67a.93.93 0 1 1-.54-1.79c3.58-1.08 9.66-.87 13.48 1.4a.93.93 0 1 1-.96 1.6z"/></svg>`,
+  },
+  {
+    id: "youtube_music",
+    label: "YouTube Music",
+    icon: `<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33-.22 2.65-.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73z"/></svg>`,
+  },
+  {
+    id: "jellyfin",
+    label: "Jellyfin",
+    icon: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
+  },
+  {
+    id: "local_files",
+    label: "Local Files",
+    icon: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h6l2 3h10a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/></svg>`,
+  },
+];
+
+// Show only the cast card for the currently enabled source.
+function syncCastCards() {
+  const all = [
+    ["youtube_music", "yt-cast-card"],
+    ["jellyfin",      "jf-cast-card"],
+    ["spotify",       "sp-cast-card"],
+    ["local_files",   "lf-cast-card"],
+  ];
+  for (const [id, elId] of all) {
+    const card = $("#" + elId);
+    if (card) card.hidden = cfg?.[id]?.enabled !== true;
+  }
+}
+
+// Sync the Local Files path input with the current config.
+function initLocalPath() {
+  const inp = $("#lf-path");
+  if (!inp) return;
+  const cur = cfg?.local_files?.music_dir ?? "";
+  if (inp.value !== cur) inp.value = cur;
+}
+
+function renderQuickSource() {
+  const grid = document.getElementById("qs-grid");
+  if (!grid) return;
+  syncCastCards();
+  initLocalPath();
+  grid.innerHTML = QS_SOURCES.map(s => {
+    const isActive = cfg?.[s.id]?.enabled === true;
+    return `<button class="qs-tile${isActive ? " active" : ""}" data-qs="${s.id}" type="button">
+      <div class="qs-icon">${s.icon}</div>
+      <div class="qs-label">${s.label}</div>
+    </button>`;
+  }).join("");
+  grid.querySelectorAll(".qs-tile").forEach(btn => {
+    btn.addEventListener("click", () => enableOnlySource(btn.dataset.qs));
+  });
+}
+
+let _qsSeq = 0;   // incrementing sequence to ignore stale responses
+async function enableOnlySource(sourceId) {
+  // Update tile visuals — instant.
+  document.querySelectorAll(".qs-tile").forEach(t => t.classList.remove("active"));
+  const tile = document.querySelector(`.qs-tile[data-qs="${sourceId}"]`);
+  if (tile) tile.classList.add("active");
+
+  // Show the matching cast card instantly.
+  const allCards = { youtube_music: "yt-cast-card", jellyfin: "jf-cast-card", spotify: "sp-cast-card", local_files: "lf-cast-card" };
+  for (const [id, elId] of Object.entries(allCards)) {
+    const card = $("#" + elId);
+    if (card) card.hidden = id !== sourceId;
+  }
+  // Update local cfg cache so re-renders don't revert the card.
+  QS_SOURCES.forEach(s => { (cfg[s.id] ??= {}).enabled = s.id === sourceId; });
+
+  // Save config + switch source.  Use a sequence counter so only the
+  // most recent click's chain takes effect; stale responses are dropped.
+  const seq = ++_qsSeq;
+  const patch = { general: { default_source: sourceId } };
+  QS_SOURCES.forEach(s => { patch[s.id] = { enabled: s.id === sourceId }; });
+  try {
+    cfg = await api.send("/api/config", patch, "PUT");
+    if (seq !== _qsSeq) return;   // a newer click superseded this one
+    renderQuickSource();
+    await api.send("/api/source/switch", { source: sourceId });
+  } catch(e) {
+    if (seq === _qsSeq) toast(e.message, true);
+  }
+}
+
+async function syncSave(patch, opts = {}) {
+  setSaveStatus("saving");
+  try {
+    cfg = await api.send("/api/config", patch, "PUT");
+    if (!opts.silent) toast("Saved");
+    renderSettings();
+    renderSettingsPage();
+    renderQuickSource();
+    setSaveStatus("saved");
+  } catch(e) {
+    setSaveStatus("error");
+    toast(e.message, true);
+  }
+}
+
+function setSaveStatus(state) {
+  const text = document.getElementById("sp-status-text");
+  if (!text) return;
+  if (state === "saving") {
+    text.textContent = "Saving...";
+    text.style.color = "#fff";
+  } else if (state === "error") {
+    text.textContent = "Save failed";
+    text.style.color = "#fca5a5";
+  } else {
+    text.textContent = "All changes saved";
+    text.style.color = "";
+  }
+}
+
+/* ── Auto-save: collect a single field and PATCH it ──────────────────────── */
+const autoSaveDebounce = new Map();
+function autoSaveField(el) {
+  const sec = el.dataset.spSection, key = el.dataset.spKey;
+  if (!sec || !key) return;
+  let value;
+  if (el.dataset.spIndex !== undefined) {
+    // EQ band: rebuild full array from siblings
+    const arr = [];
+    document.querySelectorAll(`[data-sp-section="${sec}"][data-sp-key="${key}"]`).forEach(other => {
+      arr[parseInt(other.dataset.spIndex,10)] = parseFloat(other.value);
+    });
+    value = arr;
+  } else if (el.type === "checkbox") value = el.checked;
+  else if (el.type === "number" || el.type === "range") value = parseFloat(el.value);
+  else value = el.value;
+
+  const patch = { [sec]: { [key]: value } };
+  syncSave(patch, { silent: true });
+}
+
+function autoSaveDebounced(el, delay = 600) {
+  const id = `${el.dataset.spSection}.${el.dataset.spKey}.${el.dataset.spIndex ?? ""}`;
+  clearTimeout(autoSaveDebounce.get(id));
+  setSaveStatus("saving");
+  autoSaveDebounce.set(id, setTimeout(() => autoSaveField(el), delay));
+}
+
+/* ── FAQ accordion ───────────────────────────────────────────────────────── */
+$$(".faq-q").forEach(q => {
+  q.addEventListener("click", () => {
+    const item = q.parentElement;
+    const ans  = q.nextElementSibling;
+    const open = ans.classList.contains("open");
+    $$(".faq-a").forEach(a => a.classList.remove("open"));
+    $$(".faq-item").forEach(i => i.classList.remove("open"));
+    if (!open) { ans.classList.add("open"); item.classList.add("open"); }
+  });
+});
+
+/* ── Helpers ─────────────────────────────────────────────────────────────── */
+const fmt = ms => {
+  if (!ms || ms < 0) return "0:00";
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+};
+
+let _toastEl = null;
+let _toastTimer = null;
+const dismissToast = () => {
+  if (!_toastEl) return;
+  const el = _toastEl;
+  el.classList.add("leaving");
+  _toastEl = null;
+  setTimeout(() => el.remove(), 260);
+};
+const scheduleDismiss = () => {
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(dismissToast, 2400);
+};
+const toast = (msg, isErr = false) => {
+  // Identical toast already visible → just refresh its timer.
+  if (_toastEl && _toastEl.textContent === String(msg) && _toastEl.classList.contains("err") === isErr) {
+    scheduleDismiss();
+    return;
+  }
+  // Replace any existing toast (instant — no fade between identical positions).
+  if (_toastEl) {
+    clearTimeout(_toastTimer);
+    _toastEl.remove();
+    _toastEl = null;
+  }
+  _toastEl = document.createElement("div");
+  _toastEl.className = "toast" + (isErr ? " err" : "");
+  _toastEl.textContent = msg;
+  document.body.appendChild(_toastEl);
+  scheduleDismiss();
+};
+
+// Top-center warning popup, auto-dismisses after 5s with a fade-out.
+let _warnEl = null, _warnTimer = null;
+const warnPopup = (msg) => {
+  if (_warnEl) { _warnEl.remove(); clearTimeout(_warnTimer); }
+  _warnEl = document.createElement("div");
+  _warnEl.className = "warn-popup";
+  _warnEl.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span></span>`;
+  _warnEl.querySelector("span").textContent = msg;
+  document.body.appendChild(_warnEl);
+  const el = _warnEl;
+  _warnTimer = setTimeout(() => {
+    el.classList.add("leaving");
+    setTimeout(() => { el.remove(); if (_warnEl === el) _warnEl = null; }, 320);
+  }, 5000);
+};
+
+const setText = (el, v) => { if (el && el.textContent !== String(v)) el.textContent = v; };
+
+const ICON_PLAY     = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+const ICON_PAUSE    = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+const ICON_SPINNER  = `<span class="spinner"></span>`;
+
+/* ── Render ───────────────────────────────────────────────────────────────── */
+function renderStatus() {
+  // status dot removed per user request — no-op
+}
+
+const NOTE_SVG = `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" class="text-neutral-400">
+  <path d="M9 18V5l12-2v13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="1.5"/>
+  <circle cx="18" cy="16" r="3" stroke="currentColor" stroke-width="1.5"/>
+</svg>`;
+
+let _lastArtState = null;   // "loading" | url | "" — to avoid redundant re-renders
+function renderArtwork(url, loading) {
+  const key = url || (loading ? "loading" : "");
+  if (key === _lastArtState) return;
+  _lastArtState = key;
+  const box = document.getElementById("np-art");
+  if (!box) return;
+  box.innerHTML = "";
+
+  // No artwork URL yet: show a spinner while a track is loading, else the note.
+  if (!url) {
+    if (loading) {
+      const sp = document.createElement("span");
+      sp.className = "spinner spinner-light";
+      box.appendChild(sp);
+    } else {
+      box.innerHTML = NOTE_SVG;
+    }
+    return;
+  }
+
+  // Artwork URL present: spinner overlay until the image finishes loading.
+  const spinner = document.createElement("span");
+  spinner.className = "spinner spinner-light";
+  spinner.style.position = "absolute";
+  box.appendChild(spinner);
+
+  const img = document.createElement("img");
+  img.src = url;
+  img.alt = "";
+  img.draggable = false;
+  img.style.cssText = "width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity .25s ease; user-select:none; -webkit-user-drag:none;";
+  img.onload  = () => { img.style.opacity = "1"; spinner.remove(); };
+  img.onerror = () => { spinner.remove(); box.innerHTML = NOTE_SVG; _lastArtState = ""; };
+  box.appendChild(img);
+}
+
+function renderNowPlaying() {
+  const t = state?.track || {};
+  const a = state?.sources?.active;
+  const srcEarly  = state?.sources?.available?.find(s => s.name === a);
+  const isLoading = srcEarly?.playback_state === "buffering" ||
+                    (t.title && (t.title === "(loading)" || t.title === "(buffering)"));
+  renderArtwork(t.artwork_url || null, !!isLoading);
+
+  const titleEl = $("#np-title");
+  if (titleEl && titleEl.textContent !== String(t.title || "Nothing playing")) {
+    titleEl.classList.remove("anim-in"); void titleEl.offsetWidth; titleEl.classList.add("anim-in");
+    titleEl.textContent = t.title || "Nothing playing";
+  }
+  // Marquee only for real song titles that overflow — never while loading.
+  if (titleEl) {
+    const wrap = titleEl.parentElement;
+    if (wrap) {
+      if (isLoading) {
+        wrap.classList.remove("scroll");
+      } else {
+        requestAnimationFrame(() => {
+          const overflow = titleEl.scrollWidth > wrap.clientWidth + 4;
+          wrap.classList.toggle("scroll", overflow);
+        });
+      }
+    }
+  }
+  const artistEl = $("#np-artist");
+  if (artistEl) {
+    const v = t.artist ? `${t.artist}${t.album ? " · " + t.album : ""}` : "";
+    if (artistEl.textContent !== v) {
+      artistEl.classList.remove("anim-in"); void artistEl.offsetWidth; artistEl.classList.add("anim-in");
+      artistEl.textContent = v;
+    }
+  }
+  setText($("#np-pos"), fmt(t.position_ms));
+  setText($("#np-dur"), fmt(t.duration_ms));
+  const pct = (t.duration_ms && t.position_ms) ? Math.min(100, (t.position_ms / t.duration_ms) * 100) : 0;
+  $("#np-fill").style.width = pct + "%";
+  const src       = state?.sources?.available?.find(s => s.name === a);
+  const playing   = src?.playback_state === "playing";
+  const buffering = src?.playback_state === "buffering";
+
+  const playBtn = $("#t-play");
+  const prevBtn = $("#t-prev");
+  const nextBtn = $("#t-next");
+
+  const ICON_PREV = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>`;
+  const ICON_NEXT = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm2.5-6 5.5 4V8l-5.5 4zM16 6h2v12h-2z"/></svg>`;
+  const ICON_SPIN_LIGHT = `<span class="spinner spinner-light"></span>`;
+
+  // Buffering counts as "active": show the pause icon (the track is loading
+  // and will play) so it never looks stopped. No spinner on the play button.
+  if (playBtn) playBtn.innerHTML = (playing || buffering) ? ICON_PAUSE : ICON_PLAY;
+  if (prevBtn) prevBtn.innerHTML = _transportPending === "t-prev" ? ICON_SPIN_LIGHT : ICON_PREV;
+  if (nextBtn) nextBtn.innerHTML = _transportPending === "t-next" ? ICON_SPIN_LIGHT : ICON_NEXT;
+
+  const card = $("#now-playing-card");
+  if (card) card.classList.toggle("playing", playing && !_transportPending);
+}
+
+function sourceDetailLine(s) {
+  if (s.name === "local_files" && s.details?.track_count != null) {
+    const n = s.details.track_count;
+    return `${n} track${n === 1 ? "" : "s"} indexed`;
+  }
+  return null;
+}
+
+let _sourcePending = null;   // name of a source whose switch is in flight
+const SOURCE_ORDER = { spotify: 0, youtube_music: 1, jellyfin: 2, local_files: 3 };
+function renderSources() {
+  const wrap = $("#sources");
+  if (!wrap) return;  // Source card removed — quick-enable tiles handle source switching
+  const available = [...(state?.sources?.available || [])].sort(
+    (a, b) => (SOURCE_ORDER[a.name] ?? 99) - (SOURCE_ORDER[b.name] ?? 99)
+  );
+  const active    = state?.sources?.active;
+  const sig = available.map(s =>
+    `${s.name}:${s.playback_state}:${s.auth_state}:${s.details?.track_count ?? ""}:${s.name === active}:${s.name === _sourcePending}`
+  ).join("|");
+  if (wrap.dataset.sig === sig) return;
+  wrap.dataset.sig = sig;
+  wrap.innerHTML = "";
+  for (const s of available) {
+    const tile = document.createElement("button");
+    tile.className = "source" + (s.name === active ? " active" : "");
+    tile.type = "button";
+    const stateCls = s.auth_state === "needs_auth" ? "warn" : s.auth_state === "error" ? "err" : "";
+    const detail   = sourceDetailLine(s);
+    const showNote = (s.auth_state === "needs_auth" || s.auth_state === "error") && s.auth_instructions;
+    const loading  = s.name === _sourcePending || s.playback_state === "buffering";
+    const stateHtml = loading
+      ? `<span class="spinner spinner-light" style="width:12px;height:12px;vertical-align:middle;"></span> <span style="vertical-align:middle;">loading…</span>`
+      : `${s.playback_state}${s.auth_state !== "none_required" ? " · " + s.auth_state.replace("_"," ") : ""}${detail ? " · " + detail : ""}`;
+    tile.innerHTML = `
+      <div class="name">${s.display_name}</div>
+      <div class="state ${stateCls}">${stateHtml}</div>
+      ${showNote ? `<div class="auth-note">${s.auth_instructions}</div>` : ""}
+    `;
+    tile.addEventListener("click", async () => {
+      if (_sourcePending) return;
+      _sourcePending = s.name;
+      renderSources();
+      try { await api.send("/api/source/switch", { source: s.name }); }
+      catch (e) { toast(e.message, true); }
+      finally {
+        // Keep the spinner briefly so the switch reads as deliberate, then
+        // let the live state take over.
+        setTimeout(() => { _sourcePending = null; renderSources(); }, 600);
+      }
+    });
+    wrap.appendChild(tile);
+  }
+  $("#yt-cast-card").hidden = !available.some(s => s.name === "youtube_music");
+  $("#jf-cast-card").hidden = !available.some(s => s.name === "jellyfin");
+  $("#sp-cast-card").hidden = !available.some(s => s.name === "spotify");
+}
+
+let volDirty = false;
+function renderOutput() {
+  // Use the user-configured gain so pause (which fades the bridge gain to 0)
+  // doesn't visually move the slider to zero. Fallback to bridge gain only
+  // until cfg has been fetched.
+  const gain = (cfg?.audio?.output_gain != null) ? cfg.audio.output_gain : (state?.audio?.output_gain ?? 0);
+  if (!volDirty) {
+    const slider = $("#vol");
+    if (Math.abs(parseFloat(slider.value) - gain) > 0.005) slider.value = gain;
+    const pct = Math.round(gain * 100) + "%";
+    const out = $("#vol-out");
+    if (out) out.value = pct;
+    // highlight active marker
+    $$(".vol-mark").forEach(btn => {
+      if (btn.classList.contains("vol-mark-current")) return;
+      const v = parseFloat(btn.dataset.val);
+      btn.style.opacity = Math.abs(v - gain) < 0.03 ? "1" : "0.45";
+    });
+  }
+}
+
+/* ── Settings schema ─────────────────────────────────────────────────────── */
+const EQ_BAND_LABELS = ["60 Hz", "250 Hz", "1 kHz", "4 kHz", "12 kHz"];
+const SCHEMA = [
+  ["general", "General", [
+    ["port","Port","number",1,65535],["ring_buffer_mb","Ring buffer (MB)","number",1,64],
+    ["default_source","Default source","text"],["fallback_source","Fallback source","text"],
+    ["ffmpeg_path","ffmpeg path (optional)","text"],
+  ]],
+  ["local_files","Local Files",[
+    ["enabled","Enabled","checkbox"],["music_dir","Music directory","text"],
+    ["recursive","Scan subfolders","checkbox"],["shuffle","Shuffle","checkbox"],
+  ]],
+  ["youtube_music","YouTube Music",[
+    ["enabled","Enabled","checkbox"],["cookies_path","cookies.txt (optional)","text"],
+    ["yt_dlp_path","yt-dlp path (optional)","text"],["default_playlist","Default playlist URL","text"],
+    ["shuffle","Shuffle","checkbox"],
+  ]],
+  ["jellyfin","Jellyfin",[
+    ["enabled","Enabled","checkbox"],["server_url","Server URL","text"],
+    ["user_id","User ID","text"],["api_key","API Key","text"],
+    ["default_playlist","Default Playlist","text"],["use_favorites","Use Favorites","checkbox"],
+    ["shuffle","Shuffle","checkbox"],
+  ]],
+  ["audio","Audio",[["output_gain","Output gain","number",0,1,0.01]]],
+  ["playback","Playback",[
+    ["race_start_playback","Race start","select",["next","restart","ignore"]],
+    ["quick_station_skip","Quick station skip","checkbox"],
+    ["volume_normalization","Normalize loudness","checkbox"],
+    ["equalizer_enabled","Equalizer","checkbox"],
+    ["equalizer_bands","Equalizer bands","bands"],
+    ["force_stereo_audio","Force stereo audio","checkbox"],
+    ["prebuffer_next_track","Pre-buffer next track","checkbox"],
+    ["show_track_notification","Show banner on track change","checkbox"],
+  ]],
+];
+
+function field(section, [key, label, type, a, b, c]) {
+  const id = `f-${section}-${key}`, cur = cfg?.[section]?.[key];
+  if (type === "checkbox") return `<div class="field checkbox"><input type="checkbox" id="${id}" data-section="${section}" data-key="${key}" ${cur?"checked":""}><label for="${id}">${label}</label></div>`;
+  if (type === "select") {
+    const opts = (a||[]).map(v=>`<option value="${v}" ${cur===v?"selected":""}>${v}</option>`).join("");
+    return `<div class="field"><label for="${id}">${label}</label><select id="${id}" data-section="${section}" data-key="${key}">${opts}</select></div>`;
+  }
+  if (type === "bands") {
+    const vals = Array.isArray(cur)?cur:[0,0,0,0,0];
+    const rows = EQ_BAND_LABELS.map((lbl,i)=>`<div class="band"><span class="band-label">${lbl}</span><input type="range" min="-6" max="6" step="0.5" value="${vals[i]??0}" data-section="${section}" data-key="${key}" data-index="${i}"><output>${(vals[i]??0).toFixed(1)} dB</output></div>`).join("");
+    return `<div class="field bands"><label>${label}</label>${rows}</div>`;
+  }
+  const attrs = type==="number"?` min="${a??""}" max="${b??""}" step="${c??1}"`:"";
+  return `<div class="field"><label for="${id}">${label}</label><input id="${id}" type="${type}" data-section="${section}" data-key="${key}"${attrs} value="${cur??""}"></div>`;
+}
+
+function renderSettings() {
+  const form = $("#settings-form");
+  form.innerHTML = SCHEMA.map(([sec,title,fields])=>
+    `<fieldset class="s-fieldset"><legend class="s-legend">${title}</legend>${fields.map(f=>field(sec,f)).join("")}</fieldset>`
+  ).join("");
+  $$(".field.bands input[type='range']",form).forEach(r=>{
+    const out=r.nextElementSibling;
+    r.addEventListener("input",()=>{out.textContent=`${parseFloat(r.value).toFixed(1)} dB`;});
+  });
+}
+
+function collectSettings() {
+  const patch = {};
+  $$("#settings-form [data-section]").forEach(el => {
+    const sec = el.dataset.section, key = el.dataset.key;
+    (patch[sec] ??= {});
+    if (el.dataset.index !== undefined) { (patch[sec][key]??=[])[parseInt(el.dataset.index,10)]=parseFloat(el.value); return; }
+    if (el.type==="checkbox") patch[sec][key]=el.checked;
+    else if (el.type==="number"||el.type==="range") patch[sec][key]=parseFloat(el.value);
+    else patch[sec][key]=el.value;
+  });
+  return patch;
+}
+
+/* ── Drawer ───────────────────────────────────────────────────────────────── */
+function openDrawer()  { $("#drawer").classList.add("open"); $("#scrim").hidden=false; $("#drawer").setAttribute("aria-hidden","false"); }
+function closeDrawer() { $("#drawer").classList.remove("open"); $("#scrim").hidden=true; $("#drawer").setAttribute("aria-hidden","true"); }
+
+/* ── Transport ────────────────────────────────────────────────────────────── */
+let _transportPending = null;  // which button is currently busy
+async function transport(action) {
+  const src = state?.sources?.active;
+  if (!src) return;
+  if (action==="play") {
+    const s=state.sources.available.find(x=>x.name===src);
+    // Buffering is treated as active, so the toggle pauses it.
+    if(s?.playback_state==="playing" || s?.playback_state==="buffering") action="pause";
+  }
+  // Map the action back to which button to show as loading
+  const buttonId = action === "previous" ? "t-prev" : action === "next" ? "t-next" : "t-play";
+  _transportPending = buttonId;
+  renderNowPlaying();
+  try { await api.send(`/api/source/${src}/${action}`); }
+  catch (e) { toast(e.message, true); }
+  finally { _transportPending = null; renderNowPlaying(); }
+}
+
+/* ── Wire ─────────────────────────────────────────────────────────────────── */
+function wire() {
+  const openSettingsDrawer = async () => {
+    try { cfg = await api.get("/api/config"); } catch {}
+    renderSettings();
+    openDrawer();
+  };
+
+  // Nav
+  $$(".nav-link[data-page]").forEach(el => el.addEventListener("click", () => showPage(el.dataset.page)));
+  const openOptionsPage = async () => {
+    // Show the page immediately with a spinner so the click feels responsive
+    showPage("options");
+    const grid = document.getElementById("sp-grid");
+    if (grid) grid.innerHTML = `<div style="grid-column:1/-1;display:flex;justify-content:center;align-items:center;min-height:240px;"><span class="spinner spinner-light" style="width:28px;height:28px;border-width:2.5px;"></span></div>`;
+    try { cfg = await api.get("/api/config"); } catch {}
+    renderSettingsPage();
+  };
+  $("#nav-options").addEventListener("click", openOptionsPage);
+
+  // Load config on startup — render quick source regardless of connection
+  renderQuickSource();
+  (async () => { try { cfg = await api.get("/api/config"); renderQuickSource(); } catch {} })();
+
+  // Transport
+  $("#t-play").onclick = () => transport("play");
+  $("#t-next").onclick = () => transport("next");
+  $("#t-prev").onclick = () => transport("previous");
+
+  // Volume
+  const vol = $("#vol");
+  vol.addEventListener("input", () => { volDirty=true; $("#vol-out").value=Math.round(parseFloat(vol.value)*100)+"%"; });
+  vol.addEventListener("change", async () => {
+    const v = parseFloat(vol.value);
+    if (cfg) { (cfg.audio ??= {}).output_gain = v; }
+    try { await api.send("/api/options",{output_gain:v}); } catch(e){toast(e.message,true);}
+    setTimeout(()=>{volDirty=false;},400);
+  });
+
+  // Volume snap markers
+  document.querySelectorAll(".vol-mark").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const val = parseFloat(btn.dataset.val);
+      vol.value = val;
+      $("#vol-out").value = Math.round(val * 100) + "%";
+      if (cfg) { (cfg.audio ??= {}).output_gain = val; }
+      try { await api.send("/api/options", { output_gain: val }); } catch(e) { toast(e.message, true); }
+    });
+  });
+
+  // YT cast
+  $("#yt-cast").addEventListener("submit", async e => {
+    e.preventDefault(); const url=$("#yt-url").value.trim(); if(!url)return;
+    // Warn when the URL is a single video rather than a playlist.
+    const isPlaylist = /[?&]list=/.test(url) || /\/playlist\b/.test(url);
+    if (!isPlaylist) {
+      warnPopup("Single tracks can cause playback issues — YouTube Music works best with playlists.");
+    }
+    try { await api.send("/api/source/youtube_music/cast",{url}); $("#yt-url").value=""; toast("Casting..."); }
+    catch(err){toast(err.message,true);}
+  });
+  $("#yt-shuffle").addEventListener("click", async () => {
+    const yt=state?.sources?.available?.find(s=>s.name==="youtube_music"); if(!yt)return;
+    const shuffle=!yt.details?.shuffle;
+    try { await api.send("/api/source/youtube_music/shuffle",{shuffle}); toast(shuffle?"Shuffle on":"Shuffle off"); }
+    catch(err){toast(err.message,true);}
+  });
+
+  // Jellyfin cast
+  $("#jf-cast").addEventListener("submit", async e => {
+    e.preventDefault(); const playlist_id=$("#jf-url").value.trim(); if(!playlist_id)return;
+    try { await api.send("/api/source/jellyfin/cast",{playlist_id}); $("#jf-url").value=""; toast("Playing playlist..."); }
+    catch(err){toast(err.message,true);}
+  });
+
+  // Local Files — music folder path
+  $("#lf-cast").addEventListener("submit", async e => {
+    e.preventDefault();
+    const path = $("#lf-path").value.trim();
+    try { await syncSave({ local_files: { music_dir: path } }); toast("Music folder set"); }
+    catch(err) { toast(err.message, true); }
+  });
+
+  // Spotify cast
+  $("#sp-cast").addEventListener("submit", async e => {
+    e.preventDefault(); const url=$("#sp-url").value.trim(); if(!url)return;
+    const isSingle = /\/track\//.test(url) || /spotify:track:/.test(url);
+    if (isSingle) warnPopup("Single tracks can cause playback issues — Spotify works best with playlists or albums.");
+    try { await api.send("/api/source/spotify/cast",{url}); $("#sp-url").value=""; toast("Resolving Spotify…"); }
+    catch(err){toast(err.message,true);}
+  });
+  $("#sp-shuffle").addEventListener("click", async () => {
+    const sp=state?.sources?.available?.find(s=>s.name==="spotify"); if(!sp)return;
+    const shuffle=!sp.details?.shuffle;
+    try { await api.send("/api/source/spotify/shuffle",{shuffle}); toast(shuffle?"Shuffle on":"Shuffle off"); }
+    catch(err){toast(err.message,true);}
+  });
+
+  // Settings
+  $("#close-settings").onclick = closeDrawer;
+  $("#scrim").onclick           = closeDrawer;
+  $("#save-config").onclick     = async () => { await syncSave(collectSettings()); closeDrawer(); };
+  $("#reload-config").onclick   = async () => {
+    try { cfg = await api.send("/api/config/reload"); renderSettings(); renderSettingsPage(); toast("Reloaded from disk"); }
+    catch(e) { toast(e.message, true); }
+  };
+
+  // Settings page reload button
+  $("#sp-reload").addEventListener("click", async () => {
+    try {
+      cfg = await api.send("/api/config/reload");
+      renderSettings();
+      renderSettingsPage();
+      renderQuickSource();
+      setSaveStatus("saved");
+      toast("Reloaded from disk");
+    } catch(e) { toast(e.message, true); }
+  });
+}
+
+/* ── Connect ──────────────────────────────────────────────────────────────── */
+function connect() {
+  let es;
+  try {
+    es = new EventSource("/api/events");
+    es.onmessage = e => { state=JSON.parse(e.data); render(); };
+    es.onerror   = () => { es.close(); setTimeout(poll,1000); };
+  } catch { poll(); }
+}
+async function poll() {
+  try { state=await api.get("/api/state"); render(); } catch {}
+  setTimeout(poll,1000);
+}
+
+function render() {
+  renderStatus();
+  renderNowPlaying();
+  renderSources();
+  renderOutput();
+  // Shuffle button state
+  const yt=state?.sources?.available?.find(s=>s.name==="youtube_music");
+  const shuffleBtn=$("#yt-shuffle");
+  if(shuffleBtn) shuffleBtn.classList.toggle("active",!!yt?.details?.shuffle);
+  const sp=state?.sources?.available?.find(s=>s.name==="spotify");
+  const spShuffleBtn=$("#sp-shuffle");
+  if(spShuffleBtn) spShuffleBtn.classList.toggle("active",!!sp?.details?.shuffle);
+}
+
+wire();
+connect();
+</script>
+
+</body>
+</html>
