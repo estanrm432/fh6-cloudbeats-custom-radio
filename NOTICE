@@ -1,0 +1,36 @@
+Horizon CloudBeats
+==================
+
+Copyright (C) 2026 MyLuxy
+https://github.com/MyLuxy/fh6-cloudbeats-custom-radio
+
+This program is free software, licensed under the GNU General Public
+License v3.0 (see the LICENSE file). You may redistribute and/or modify
+it under those terms; any derivative work must remain under the GPLv3.
+
+
+Authorship
+----------
+
+Horizon CloudBeats is a fork of FH6 Universal Radio. The following
+modifications and new features were created by MyLuxy and are
+Copyright (C) 2026 MyLuxy, released under the GPLv3:
+
+  - Spotify source support
+  - Standalone desktop companion app (HorizonCloudBeats.exe)
+  - Automatic dependency installer for yt-dlp, ffmpeg and deno
+  - Fixed 5-band equalizer (non-functional in the original build)
+  - Fixed the in-game station name; optional now-playing banner
+  - Code optimizations and reliability fixes
+
+
+Based on
+--------
+
+FH6 Universal Radio
+Copyright (C) g0ldyy
+https://github.com/g0ldyy/fh6-universal-radio
+Licensed under the GNU General Public License v3.0.
+
+All original authorship and attribution is retained as required by the
+license.
