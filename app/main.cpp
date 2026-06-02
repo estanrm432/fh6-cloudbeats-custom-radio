@@ -103,6 +103,49 @@ bool game_running() {
     return found;
 }
 
+// --- First-run dependency bootstrap -----------------------------------------
+// The YouTube / Spotify engine shells out to yt-dlp, ffmpeg and deno. If any is
+// missing from PATH, install it quietly via winget so playback works without
+// the user ever opening a terminal. Best-effort and silent: any failure is
+// ignored (local files and Jellyfin work regardless), it spawns no window, and
+// it runs on a detached background thread so it never blocks the UI. This is an
+// outbound install only -- it opens no listening socket, so the port-safety
+// guarantees above still hold.
+bool tool_on_path(const wchar_t* exe) {
+    wchar_t found[MAX_PATH];
+    return SearchPathW(nullptr, exe, L".exe", MAX_PATH, found, nullptr) != 0;
+}
+
+void winget_install(const wchar_t* package_id) {
+    std::wstring cmd = L"winget.exe install --id ";
+    cmd += package_id;
+    cmd += L" --exact --silent --accept-source-agreements --accept-package-agreements";
+
+    std::vector<wchar_t> mutable_cmd(cmd.begin(), cmd.end());
+    mutable_cmd.push_back(L'\0');
+
+    STARTUPINFOW         si{};
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION  pi{};
+    if (CreateProcessW(nullptr, mutable_cmd.data(), nullptr, nullptr, FALSE,
+                       CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+    }
+}
+
+void ensure_dependencies() {
+    struct Tool { const wchar_t* exe; const wchar_t* id; };
+    static constexpr Tool kTools[] = {
+        {L"yt-dlp", L"yt-dlp.yt-dlp"},
+        {L"ffmpeg", L"Gyan.FFmpeg"},
+        {L"deno",   L"DenoLand.Deno"},
+    };
+    for (const auto& t : kTools)
+        if (!tool_on_path(t.exe)) winget_install(t.id);
+}
+
 // Confirm the in-game radio server (version.dll) is actually answering on
 // localhost:8420 -- i.e. the DLL, not us, has opened the site. This is a pure
 // *client* connection (connect + GET): it uses an ephemeral outbound port and
@@ -551,6 +594,10 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nShow) {
 
     WSADATA wsa{};
     WSAStartup(MAKEWORD(2, 2), &wsa);   // for the client-side dashboard probe
+
+    // Make sure the YouTube/Spotify helper tools are installed (best-effort,
+    // background, silent). Runs once per launch; no-op once they're on PATH.
+    std::thread(ensure_dependencies).detach();
 
     Gdiplus::GdiplusStartupInput gsi{};
     ULONG_PTR gdipToken = 0;
