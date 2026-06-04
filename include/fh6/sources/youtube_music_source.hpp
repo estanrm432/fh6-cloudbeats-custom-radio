@@ -83,7 +83,7 @@ private:
 
     mutable std::mutex mu_;
     std::string target_url_;
-    std::vector<std::string> queue_;     // canonical watch URLs in playback order
+    std::vector<std::string> queue_;     // canonical watch URLs in current playback order
     std::size_t queue_idx_ = 0;
     std::string queue_built_for_;        // value of target_url_ when queue_ was resolved
     bool external_queue_ = false;        // queue injected (Spotify) — skip URL resolution

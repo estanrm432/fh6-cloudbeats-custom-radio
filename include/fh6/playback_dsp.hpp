@@ -56,6 +56,13 @@ public:
             std::scoped_lock lk{mu_};
             active_           = pending_;
             applied_version_  = version_.load(std::memory_order_relaxed);
+            // Reserve headroom so positive (boost) bands can't hard-clip: trim
+            // the input by the largest boost, leaving each band's coloration
+            // intact while keeping the boosted peak at/under unity. Cuts need no
+            // headroom, so a cuts-only EQ plays at full level (pre_gain_ == 1).
+            float max_boost = 0.0f;
+            for (float b : active_.bands) max_boost = std::max(max_boost, b);
+            pre_gain_ = max_boost > 0.0f ? std::pow(10.0f, -max_boost / 20.0f) : 1.0f;
             for (std::size_t i = 0; i < kBands; ++i) {
                 set_peaking(filters_[i], active_.fs, kCentres[i], active_.bands[i]);
                 filters_[i].z1l = filters_[i].z2l = 0.0f;
@@ -65,8 +72,8 @@ public:
         if (!active_.enabled) return;
 
         for (std::size_t i = 0; i < frames; ++i) {
-            float l = static_cast<float>(samples[2 * i + 0]) * (1.0f / 32768.0f);
-            float r = static_cast<float>(samples[2 * i + 1]) * (1.0f / 32768.0f);
+            float l = static_cast<float>(samples[2 * i + 0]) * (1.0f / 32768.0f) * pre_gain_;
+            float r = static_cast<float>(samples[2 * i + 1]) * (1.0f / 32768.0f) * pre_gain_;
             for (auto& f : filters_) {
                 l = process_one(f, l, f.z1l, f.z2l);
                 r = process_one(f, r, f.z1r, f.z2r);
@@ -119,6 +126,7 @@ private:
     uint64_t applied_version_ = ~uint64_t{0};
     Snap pending_;
     Snap active_;
+    float pre_gain_ = 1.0f;   // input headroom trim so boosts don't clip
     std::array<Biquad, kBands> filters_{};
 };
 

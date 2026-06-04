@@ -176,7 +176,10 @@ void run_bridge(HMODULE self) noexcept {
             }
         }
         if (auto* yt = dynamic_cast<sources::YouTubeMusicSource*>(mgr.find("youtube_music"))) {
-            yt->set_shuffle(c.youtube_music.shuffle);
+            // Only on an actual change: set_shuffle reorders the queue and drops
+            // any prefetch, so firing it on every unrelated config patch would
+            // needlessly churn (and historically scrambled the playlist order).
+            if (yt->shuffle() != c.youtube_music.shuffle) yt->set_shuffle(c.youtube_music.shuffle);
             yt->set_ffmpeg_path(c.general.ffmpeg_path);
         }
         if (auto* jf = dynamic_cast<sources::JellyfinSource*>(mgr.find("jellyfin"))) {
@@ -184,7 +187,7 @@ void run_bridge(HMODULE self) noexcept {
             jf->set_config(c.jellyfin);
         }
         if (auto* sp = dynamic_cast<sources::SpotifySource*>(mgr.find("spotify"))) {
-            sp->set_shuffle(c.spotify.shuffle);
+            if (sp->shuffle() != c.spotify.shuffle) sp->set_shuffle(c.spotify.shuffle);
             sp->set_ffmpeg_path(c.general.ffmpeg_path);
         }
 

@@ -342,6 +342,51 @@
   .warn-popup.leaving { animation: warn-out .3s cubic-bezier(0.4, 0, 1, 1) forwards; }
   .warn-popup svg { flex-shrink: 0; color: #fff; }
 
+  /* ── Confirm modal ──────────────────────────────────────────── */
+  @keyframes modal-scrim-in  { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes modal-scrim-out { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes modal-pop-in {
+    from { opacity: 0; transform: translateY(8px) scale(.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes modal-pop-out {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to   { opacity: 0; transform: translateY(6px) scale(.98); }
+  }
+  .modal-scrim {
+    position: fixed; inset: 0; z-index: 80;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    background: rgba(0,0,0,0.62); backdrop-filter: blur(4px);
+    animation: modal-scrim-in .22s ease forwards;
+  }
+  .modal-scrim.leaving { animation: modal-scrim-out .24s ease forwards; }
+  .modal-box {
+    width: 100%; max-width: 380px; text-align: center;
+    background: #161616; border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 18px; padding: 26px 24px 22px;
+    box-shadow: 0 24px 70px rgba(0,0,0,.7);
+    animation: modal-pop-in .2s ease forwards;
+  }
+  .modal-scrim.leaving .modal-box { animation: modal-pop-out .2s cubic-bezier(0.4, 0, 1, 1) forwards; }
+  .modal-icon {
+    width: 44px; height: 44px; margin: 0 auto 16px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 12px; background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.09); color: #e0e0e0;
+  }
+  .modal-title { font-size: 17px; font-weight: 600; color: #f0f0f0; margin: 0 0 8px; }
+  .modal-msg   { font-size: 13.5px; line-height: 1.5; color: #a8a8a8; margin: 0 0 22px; }
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-btn {
+    flex: 1; padding: 11px 14px; border-radius: 10px; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all .18s ease; font-family: inherit;
+  }
+  .modal-btn:active { transform: scale(0.97); }
+  .modal-cancel  { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #ccc; }
+  .modal-cancel:hover  { background: rgba(255,255,255,0.1); color: #fff; }
+  .modal-confirm { background: #fff; border: 1px solid #fff; color: #080808; }
+  .modal-confirm:hover { background: #f0f0f0; }
+
   /* ── Logo — static, grows on hover (smaller hitbox via wrapper) ─ */
   .logo-wrap { cursor: default; }
   .logo-float {
@@ -1358,6 +1403,75 @@ const warnPopup = (msg) => {
   }, 5000);
 };
 
+// Promise-based confirm modal with an animated entrance/exit. Resolves true on
+// confirm, false on cancel / backdrop click / Escape.
+function confirmDialog({ title, message, confirmText = "Confirm", cancelText = "Cancel" }) {
+  return new Promise(resolve => {
+    const scrim = document.createElement("div");
+    scrim.className = "modal-scrim";
+    scrim.innerHTML = `
+      <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg></div>
+        <h3 class="modal-title" id="modal-title"></h3>
+        <p class="modal-msg"></p>
+        <div class="modal-actions">
+          <button type="button" class="modal-btn modal-cancel"></button>
+          <button type="button" class="modal-btn modal-confirm"></button>
+        </div>
+      </div>`;
+    scrim.querySelector(".modal-title").textContent = title;
+    scrim.querySelector(".modal-msg").textContent   = message;
+    const confirmBtn = scrim.querySelector(".modal-confirm"); confirmBtn.textContent = confirmText;
+    const cancelBtn  = scrim.querySelector(".modal-cancel");  cancelBtn.textContent  = cancelText;
+    document.body.appendChild(scrim);
+
+    let done = false;
+    const close = (result) => {
+      if (done) return; done = true;
+      document.removeEventListener("keydown", onKey);
+      scrim.classList.add("leaving");
+      setTimeout(() => scrim.remove(), 260);   // outlasts the exit animation
+      resolve(result);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") close(false);
+      else if (e.key === "Enter") close(true);
+    };
+    document.addEventListener("keydown", onKey);
+    confirmBtn.addEventListener("click", () => close(true));
+    cancelBtn.addEventListener("click",  () => close(false));
+    scrim.addEventListener("click", e => { if (e.target === scrim) close(false); });
+    requestAnimationFrame(() => confirmBtn.focus());
+  });
+}
+
+// Optimistic "loading" state: the moment a cast/play is triggered we flip the
+// now-playing card to a spinner + "(loading)" so the click feels instant,
+// instead of waiting for the next server state to report buffering.
+let _optLoadUntil = 0, _optLoadPrevTitle = "";
+function beginOptimisticLoading() {
+  _optLoadUntil = Date.now() + 10000;          // safety cap if the server never reports
+  _optLoadPrevTitle = state?.track?.title || "";
+  _lastArtState = null;                         // force the artwork spinner to re-render
+  renderNowPlaying();
+}
+function clearOptimisticLoading() { _optLoadUntil = 0; }
+function optimisticLoadingActive() {
+  if (!_optLoadUntil) return false;
+  if (Date.now() >= _optLoadUntil) { _optLoadUntil = 0; return false; }
+  const a   = state?.sources?.active;
+  const src = state?.sources?.available?.find(s => s.name === a);
+  const t   = state?.track || {};
+  const placeholder = t.title === "(loading)" || t.title === "(buffering)";
+  // Hand off seamlessly once the server is itself in a loading state…
+  if (src?.playback_state === "buffering" || placeholder) { _optLoadUntil = 0; return false; }
+  // …or once a new, real track has actually started.
+  if (src?.playback_state === "playing" && t.title && t.title !== _optLoadPrevTitle) {
+    _optLoadUntil = 0; return false;
+  }
+  return true;
+}
+
 const setText = (el, v) => { if (el && el.textContent !== String(v)) el.textContent = v; };
 
 const ICON_PLAY     = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
@@ -1416,14 +1530,18 @@ function renderNowPlaying() {
   const t = state?.track || {};
   const a = state?.sources?.active;
   const srcEarly  = state?.sources?.available?.find(s => s.name === a);
-  const isLoading = srcEarly?.playback_state === "buffering" ||
+  const optimistic = optimisticLoadingActive();
+  const isLoading = optimistic || srcEarly?.playback_state === "buffering" ||
                     (t.title && (t.title === "(loading)" || t.title === "(buffering)"));
-  renderArtwork(t.artwork_url || null, !!isLoading);
+  // While optimistic, ignore the stale track so the spinner + "(loading)" show
+  // immediately instead of briefly flashing the previous song.
+  renderArtwork(optimistic ? null : (t.artwork_url || null), !!isLoading);
 
+  const titleText = optimistic ? "(loading)" : (t.title || "Nothing playing");
   const titleEl = $("#np-title");
-  if (titleEl && titleEl.textContent !== String(t.title || "Nothing playing")) {
+  if (titleEl && titleEl.textContent !== titleText) {
     titleEl.classList.remove("anim-in"); void titleEl.offsetWidth; titleEl.classList.add("anim-in");
-    titleEl.textContent = t.title || "Nothing playing";
+    titleEl.textContent = titleText;
   }
   // Marquee only for real song titles that overflow — never while loading.
   if (titleEl) {
@@ -1441,7 +1559,7 @@ function renderNowPlaying() {
   }
   const artistEl = $("#np-artist");
   if (artistEl) {
-    const v = t.artist ? `${t.artist}${t.album ? " · " + t.album : ""}` : "";
+    const v = optimistic ? "" : (t.artist ? `${t.artist}${t.album ? " · " + t.album : ""}` : "");
     if (artistEl.textContent !== v) {
       artistEl.classList.remove("anim-in"); void artistEl.offsetWidth; artistEl.classList.add("anim-in");
       artistEl.textContent = v;
@@ -1465,7 +1583,7 @@ function renderNowPlaying() {
 
   // Buffering counts as "active": show the pause icon (the track is loading
   // and will play) so it never looks stopped. No spinner on the play button.
-  if (playBtn) playBtn.innerHTML = (playing || buffering) ? ICON_PAUSE : ICON_PLAY;
+  if (playBtn) playBtn.innerHTML = (playing || buffering || optimistic) ? ICON_PAUSE : ICON_PLAY;
   if (prevBtn) prevBtn.innerHTML = _transportPending === "t-prev" ? ICON_SPIN_LIGHT : ICON_PREV;
   if (nextBtn) nextBtn.innerHTML = _transportPending === "t-next" ? ICON_SPIN_LIGHT : ICON_NEXT;
 
@@ -1641,6 +1759,9 @@ async function transport(action) {
     const s=state.sources.available.find(x=>x.name===src);
     // Buffering is treated as active, so the toggle pauses it.
     if(s?.playback_state==="playing" || s?.playback_state==="buffering") action="pause";
+    // A fresh start (stopped / never played) loads a track — show loading now.
+    // A resume from pause is instant, so skip the optimistic spinner there.
+    else if (s?.playback_state !== "paused") beginOptimisticLoading();
   }
   // Map the action back to which button to show as loading
   const buttonId = action === "previous" ? "t-prev" : action === "next" ? "t-next" : "t-play";
@@ -1709,12 +1830,22 @@ function wire() {
     if (!isPlaylist) {
       warnPopup("Single tracks can cause playback issues — YouTube Music works best with playlists.");
     }
+    beginOptimisticLoading();
     try { await api.send("/api/source/youtube_music/cast",{url}); $("#yt-url").value=""; toast("Casting..."); }
-    catch(err){toast(err.message,true);}
+    catch(err){ clearOptimisticLoading(); renderNowPlaying(); toast(err.message,true); }
   });
   $("#yt-shuffle").addEventListener("click", async () => {
     const yt=state?.sources?.available?.find(s=>s.name==="youtube_music"); if(!yt)return;
     const shuffle=!yt.details?.shuffle;
+    if (shuffle) {
+      const ok = await confirmDialog({
+        title: "Turn shuffle on?",
+        message: "Shuffle will randomise the play order. If a playlist is already playing, its current order will be lost.",
+        confirmText: "Shuffle",
+        cancelText: "Cancel"
+      });
+      if (!ok) return;
+    }
     try { await api.send("/api/source/youtube_music/shuffle",{shuffle}); toast(shuffle?"Shuffle on":"Shuffle off"); }
     catch(err){toast(err.message,true);}
   });
@@ -1722,8 +1853,9 @@ function wire() {
   // Jellyfin cast
   $("#jf-cast").addEventListener("submit", async e => {
     e.preventDefault(); const playlist_id=$("#jf-url").value.trim(); if(!playlist_id)return;
+    beginOptimisticLoading();
     try { await api.send("/api/source/jellyfin/cast",{playlist_id}); $("#jf-url").value=""; toast("Playing playlist..."); }
-    catch(err){toast(err.message,true);}
+    catch(err){ clearOptimisticLoading(); renderNowPlaying(); toast(err.message,true); }
   });
 
   // Local Files — music folder path
@@ -1739,12 +1871,22 @@ function wire() {
     e.preventDefault(); const url=$("#sp-url").value.trim(); if(!url)return;
     const isSingle = /\/track\//.test(url) || /spotify:track:/.test(url);
     if (isSingle) warnPopup("Single tracks can cause playback issues — Spotify works best with playlists or albums.");
+    beginOptimisticLoading();
     try { await api.send("/api/source/spotify/cast",{url}); $("#sp-url").value=""; toast("Resolving Spotify…"); }
-    catch(err){toast(err.message,true);}
+    catch(err){ clearOptimisticLoading(); renderNowPlaying(); toast(err.message,true); }
   });
   $("#sp-shuffle").addEventListener("click", async () => {
     const sp=state?.sources?.available?.find(s=>s.name==="spotify"); if(!sp)return;
     const shuffle=!sp.details?.shuffle;
+    if (shuffle) {
+      const ok = await confirmDialog({
+        title: "Turn shuffle on?",
+        message: "Shuffle will randomise the play order. If a playlist is already playing, its current order will be lost.",
+        confirmText: "Shuffle",
+        cancelText: "Cancel"
+      });
+      if (!ok) return;
+    }
     try { await api.send("/api/source/spotify/shuffle",{shuffle}); toast(shuffle?"Shuffle on":"Shuffle off"); }
     catch(err){toast(err.message,true);}
   });

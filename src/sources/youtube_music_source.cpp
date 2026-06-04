@@ -175,33 +175,24 @@ void YouTubeMusicSource::set_shuffle(bool shuffle) {
     // The next-queue-index URL is about to change; any prefetched pipeline
     // would now be playing the wrong track.
     discard_prefetch_locked();
-    if (external_queue_) {
-        // Shuffle queue_ and queue_meta_ tails together (preserve current).
-        if (shuffle && queue_.size() > queue_idx_ + 2) {
-            static thread_local std::mt19937 rng{std::random_device{}()};
-            for (std::size_t i = queue_.size() - 1; i > queue_idx_ + 1; --i) {
-                std::uniform_int_distribution<std::size_t> d(queue_idx_ + 1, i);
-                std::size_t j = d(rng);
-                std::swap(queue_[i], queue_[j]);
-                std::swap(queue_meta_[i], queue_meta_[j]);
-            }
-        }
-        return;
-    }
-    if (!queue_.empty() && queue_built_for_ == target_url_) {
-        // Re-shuffle or re-sort the remaining queue (preserve current track)
-        if (shuffle) {
-            static thread_local std::mt19937 rng{std::random_device{}()};
-            auto start = queue_.begin() + static_cast<std::ptrdiff_t>(queue_idx_ + 1);
-            if (start < queue_.end()) {
-                std::shuffle(start, queue_.end(), rng);
-            }
-        } else {
-            // Re-sort the remaining queue (by URL, which is roughly chronological for playlists)
-            auto start = queue_.begin() + static_cast<std::ptrdiff_t>(queue_idx_ + 1);
-            if (start < queue_.end()) {
-                std::sort(start, queue_.end());
-            }
+
+    // Turning shuffle off leaves the current order exactly as-is (no restore):
+    // it only stops future tracks from being reshuffled. Nothing to reorder.
+    if (!shuffle) return;
+
+    const bool have_queue = external_queue_ ||
+                            (!queue_.empty() && queue_built_for_ == target_url_);
+    if (!have_queue) return;
+
+    // Shuffle the tail of the queue (and parallel metadata, when external),
+    // preserving the currently-playing track at queue_idx_.
+    if (queue_.size() > queue_idx_ + 2) {
+        static thread_local std::mt19937 rng{std::random_device{}()};
+        for (std::size_t i = queue_.size() - 1; i > queue_idx_ + 1; --i) {
+            std::uniform_int_distribution<std::size_t> d(queue_idx_ + 1, i);
+            std::size_t j = d(rng);
+            std::swap(queue_[i], queue_[j]);
+            if (external_queue_) std::swap(queue_meta_[i], queue_meta_[j]);
         }
     }
 }
