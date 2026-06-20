@@ -64,6 +64,7 @@ add_library(version SHARED
     src/sources/youtube_music_source.cpp
     src/sources/jellyfin_source.cpp
     src/sources/spotify_source.cpp
+    src/sources/net_ease_source.cpp
 )
 
 # MSVC carries the forwarders via pragmas in dll_main.cpp because its .def
