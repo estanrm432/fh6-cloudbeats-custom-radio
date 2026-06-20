@@ -150,6 +150,13 @@ const SCHEMA = [
     ["use_favorites",    "Use Favorites",    "checkbox"],
     ["shuffle",          "Shuffle",          "checkbox"],
   ]],
+  ["net_ease", "NetEase Cloud Music", [
+    ["enabled",          "Enabled",                "checkbox"],
+    ["api_url",          "API Server URL",         "text"],
+    ["cookie",           "Cookie (optional)",      "text"],
+    ["default_playlist", "Default playlist URL",   "text"],
+    ["shuffle",          "Shuffle",                "checkbox"],
+  ]],
   ["audio", "Audio", [
     ["output_gain", "Output gain", "number", 0, 1, 0.01],
   ]],
@@ -304,6 +311,27 @@ function wire() {
     } catch (err) { toast(err.message, true); }
   });
 
+  $("#ne-cast").addEventListener("submit", async e => {
+    e.preventDefault();
+    const url = $("#ne-url").value.trim();
+    if (!url) return;
+    try {
+      await api.send("/api/source/net_ease/cast", { url });
+      $("#ne-url").value = "";
+      toast("Playing...");
+    } catch (err) { toast(err.message, true); }
+  });
+
+  $("#ne-shuffle").addEventListener("click", async () => {
+    const ne = state?.sources?.available?.find(s => s.name === "net_ease");
+    if (!ne) return;
+    const shuffle = !ne.details?.shuffle;
+    try {
+      await api.send("/api/source/net_ease/shuffle", { shuffle });
+      toast(shuffle ? "Shuffle on" : "Shuffle off");
+    } catch (err) { toast(err.message, true); }
+  });
+
   $("#open-settings").onclick  = async () => { cfg = await api.get("/api/config"); renderSettings(); openDrawer(); };
   $("#close-settings").onclick = closeDrawer;
   $("#scrim").onclick          = closeDrawer;
@@ -346,6 +374,12 @@ function render() {
   const shuffleBtn = $("#yt-shuffle");
   if (shuffleBtn) {
     shuffleBtn.classList.toggle("active", !!yt?.details?.shuffle);
+  }
+
+  const ne = state?.sources?.available?.find(s => s.name === "net_ease");
+  const neShuffleBtn = $("#ne-shuffle");
+  if (neShuffleBtn) {
+    neShuffleBtn.classList.toggle("active", !!ne?.details?.shuffle);
   }
 }
 
