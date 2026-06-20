@@ -7,6 +7,7 @@
 #include "fh6/sources/youtube_music_source.hpp"
 #include "fh6/sources/jellyfin_source.hpp"
 #include "fh6/sources/spotify_source.hpp"
+#include "fh6/sources/net_ease_source.hpp"
 
 #include <nlohmann/json.hpp>
 
@@ -99,6 +100,8 @@ json source_to_json(IAudioSource* s) {
         j["details"]["shuffle"] = yt->shuffle();
     if (auto* sp = dynamic_cast<sources::SpotifySource*>(s))
         j["details"]["shuffle"] = sp->shuffle();
+    if (auto* ne = dynamic_cast<sources::NetEaseSource*>(s))
+        j["details"]["shuffle"] = ne->shuffle();
     return j;
 }
 
@@ -143,6 +146,14 @@ json config_to_json(const Config& c) {
              {"enabled", c.spotify.enabled},
              {"default_playlist", c.spotify.default_playlist},
              {"shuffle", c.spotify.shuffle},
+         }},
+        {"net_ease",
+         json{
+             {"enabled", c.net_ease.enabled},
+             {"api_url", c.net_ease.api_url},
+             {"cookie", c.net_ease.cookie},
+             {"default_playlist", c.net_ease.default_playlist},
+             {"shuffle", c.net_ease.shuffle},
          }},
         {"audio",
          json{
@@ -212,6 +223,13 @@ void apply_patch(Config& c, const json& j) {
         c.spotify.enabled          = pull(*it, "enabled", c.spotify.enabled);
         c.spotify.default_playlist = pull(*it, "default_playlist", c.spotify.default_playlist);
         c.spotify.shuffle          = pull(*it, "shuffle", c.spotify.shuffle);
+    }
+    if (auto it = j.find("net_ease"); it != j.end()) {
+        c.net_ease.enabled          = pull(*it, "enabled", c.net_ease.enabled);
+        c.net_ease.api_url          = pull(*it, "api_url", c.net_ease.api_url);
+        c.net_ease.cookie           = pull(*it, "cookie", c.net_ease.cookie);
+        c.net_ease.default_playlist = pull(*it, "default_playlist", c.net_ease.default_playlist);
+        c.net_ease.shuffle          = pull(*it, "shuffle", c.net_ease.shuffle);
     }
     if (auto it = j.find("audio"); it != j.end()) {
         c.audio.output_gain = pull(*it, "output_gain", c.audio.output_gain);
@@ -606,6 +624,29 @@ struct HttpServer::Impl {
             auto shuffle = json::parse(req.body).at("shuffle").get<bool>();
             sp->set_shuffle(shuffle);
             store.patch([shuffle](Config& c) { c.spotify.shuffle = shuffle; });
+            return ok();
+        }
+        if (m == "POST" && p == "/api/source/net_ease/cast") {
+            auto* ne = find_typed<sources::NetEaseSource>("net_ease");
+            if (!ne) return fail(404, "net_ease not registered");
+            auto url = json::parse(req.body).value("url", std::string{});
+            if (url.empty()) return fail(400, "url required");
+            const bool was_active = (mgr.active() == ne);
+            if (!ne->cast(url)) return fail(502, "could not resolve NetEase link (invalid/private?)");
+            if (was_active) mgr.ring().drain();
+            mgr.switch_to("net_ease");
+            store.patch([&url](Config& c) {
+                c.general.default_source = "net_ease";
+                c.net_ease.default_playlist = url;
+            });
+            return ok();
+        }
+        if (m == "POST" && p == "/api/source/net_ease/shuffle") {
+            auto* ne = find_typed<sources::NetEaseSource>("net_ease");
+            if (!ne) return fail(404, "net_ease not registered");
+            auto shuffle = json::parse(req.body).at("shuffle").get<bool>();
+            ne->set_shuffle(shuffle);
+            store.patch([shuffle](Config& c) { c.net_ease.shuffle = shuffle; });
             return ok();
         }
         if (m == "POST" && p == "/api/source/local_files/rescan") {
