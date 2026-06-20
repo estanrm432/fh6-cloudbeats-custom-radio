@@ -93,6 +93,13 @@ Config load_config(const std::filesystem::path& path) {
         pick<std::string>(sp, "default_playlist", cfg.spotify.default_playlist);
     cfg.spotify.shuffle = pick<bool>(sp, "shuffle", cfg.spotify.shuffle);
 
+    const auto& ne = section(root, "net_ease");
+    cfg.net_ease.enabled = pick<bool>(ne, "enabled", cfg.net_ease.enabled);
+    cfg.net_ease.api_url = pick<std::string>(ne, "api_url", cfg.net_ease.api_url);
+    cfg.net_ease.cookie = pick<std::string>(ne, "cookie", cfg.net_ease.cookie);
+    cfg.net_ease.default_playlist = pick<std::string>(ne, "default_playlist", cfg.net_ease.default_playlist);
+    cfg.net_ease.shuffle = pick<bool>(ne, "shuffle", cfg.net_ease.shuffle);
+
     const auto& au = section(root, "audio");
     cfg.audio.output_gain =
         static_cast<float>(pick<double>(au, "output_gain", cfg.audio.output_gain));
@@ -253,6 +260,13 @@ void save_config(const std::filesystem::path& path, const Config& cfg) {
     e.kv("enabled", cfg.spotify.enabled);
     e.kv("default_playlist", cfg.spotify.default_playlist);
     e.kv("shuffle", cfg.spotify.shuffle);
+
+    e.header("net_ease");
+    e.kv("enabled", cfg.net_ease.enabled);
+    e.kv("api_url", cfg.net_ease.api_url);
+    e.kv("cookie", cfg.net_ease.cookie);
+    e.kv("default_playlist", cfg.net_ease.default_playlist);
+    e.kv("shuffle", cfg.net_ease.shuffle);
 
     e.header("audio");
     e.kv("output_gain", (double)cfg.audio.output_gain);

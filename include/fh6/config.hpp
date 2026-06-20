@@ -69,6 +69,18 @@ struct SpotifyConfig {
     bool shuffle = false;
 };
 
+// NetEase Cloud Music (NetEase) support. Connects to a user-deployed
+// NeteaseCloudMusicApi server (https://github.com/Binaryify/NeteaseCloudMusicApi)
+// to fetch playlists/albums and stream audio. Optionally supply a cookie for
+// high-quality (320 kbps) streaming and private playlist access.
+struct NetEaseConfig {
+    bool enabled = false;
+    std::string api_url;           // e.g. "http://127.0.0.1:3000"
+    std::string cookie;            // optional login cookie for high-quality audio
+    std::string default_playlist;  // optional playlist/album URL or ID loaded at startup
+    bool shuffle = false;
+};
+
 struct AudioConfig {
     float output_gain = 1.0f;
 };
@@ -80,6 +92,7 @@ struct Config {
     AudioConfig audio;
     JellyfinConfig jellyfin;
     SpotifyConfig spotify;
+    NetEaseConfig net_ease;
     PlaybackConfig playback;
 };
 
