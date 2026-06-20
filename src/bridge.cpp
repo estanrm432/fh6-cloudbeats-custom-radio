@@ -13,6 +13,7 @@
 #include "fh6/sources/youtube_music_source.hpp"
 #include "fh6/sources/jellyfin_source.hpp"
 #include "fh6/sources/spotify_source.hpp"
+#include "fh6/sources/net_ease_source.hpp"
 
 #include <windows.h>
 #include <array>
@@ -136,6 +137,13 @@ void run_bridge(HMODULE self) noexcept {
         } else if (!c.spotify.enabled && mgr.find("spotify")) {
             mgr.unregister_source("spotify");
         }
+        if (c.net_ease.enabled && !mgr.find("net_ease")) {
+            auto src = std::make_unique<sources::NetEaseSource>(c.net_ease,
+                                                                 c.general.ffmpeg_path);
+            if (src->initialize()) mgr.register_source(std::move(src));
+        } else if (!c.net_ease.enabled && mgr.find("net_ease")) {
+            mgr.unregister_source("net_ease");
+        }
     };
 
     sync_sources(cfg);
@@ -189,6 +197,11 @@ void run_bridge(HMODULE self) noexcept {
         if (auto* sp = dynamic_cast<sources::SpotifySource*>(mgr.find("spotify"))) {
             if (sp->shuffle() != c.spotify.shuffle) sp->set_shuffle(c.spotify.shuffle);
             sp->set_ffmpeg_path(c.general.ffmpeg_path);
+        }
+        if (auto* ne = dynamic_cast<sources::NetEaseSource*>(mgr.find("net_ease"))) {
+            if (ne->shuffle() != c.net_ease.shuffle) ne->set_shuffle(c.net_ease.shuffle);
+            ne->set_ffmpeg_path(c.general.ffmpeg_path);
+            ne->set_config(c.net_ease);
         }
 
         for (auto* s : mgr.sources_snapshot()) s->set_playback_options(c.playback);
